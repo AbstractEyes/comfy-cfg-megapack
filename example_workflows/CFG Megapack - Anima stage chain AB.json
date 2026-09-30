@@ -107,7 +107,7 @@
     "masterpiece, best quality, score_7, safe, no humans, fox, red fox, sitting, snow, forest, dawn, detailed"
    ],
    "widgets_values_named": {
-    "text": "a red fox sitting in fresh snow at dawn, detailed wildlife photo"
+    "text": "masterpiece, best quality, score_7, safe, no humans, fox, red fox, sitting, snow, forest, dawn, detailed"
    }
   },
   {
@@ -160,7 +160,7 @@
     "worst quality, low quality, score_1, score_2, score_3, artist name, blurry, jpeg artifacts, chromatic aberration"
    ],
    "widgets_values_named": {
-    "text": "blurry, low quality, watermark, text"
+    "text": "worst quality, low quality, score_1, score_2, score_3, artist name, blurry, jpeg artifacts, chromatic aberration"
    }
   },
   {
@@ -871,7 +871,7 @@
     0
    ],
    "widgets_values_named": {
-    "filename_prefix": "sdxl_stack",
+    "filename_prefix": "anima_stack",
     "print_every": 0
    }
   },
@@ -1030,10 +1030,10 @@
    "widgets_values_named": {
     "seed": 1234,
     "control_after_generate": "randomize",
-    "steps": 30,
-    "cfg": 7,
-    "sampler_name": "dpmpp_2m",
-    "scheduler": "karras",
+    "steps": 40,
+    "cfg": 4.5,
+    "sampler_name": "er_sde",
+    "scheduler": "simple",
     "denoise": 1
    }
   },
@@ -1157,10 +1157,10 @@
    "widgets_values_named": {
     "seed": 1234,
     "control_after_generate": "randomize",
-    "steps": 30,
-    "cfg": 7,
-    "sampler_name": "dpmpp_2m",
-    "scheduler": "karras",
+    "steps": 40,
+    "cfg": 4.5,
+    "sampler_name": "er_sde",
+    "scheduler": "simple",
     "denoise": 1
    }
   },
@@ -1252,7 +1252,7 @@
     "cfg_anima/plain"
    ],
    "widgets_values_named": {
-    "filename_prefix": "cfg_ab/plain"
+    "filename_prefix": "cfg_anima/plain"
    }
   },
   {
@@ -1343,7 +1343,7 @@
     "cfg_anima/variant"
    ],
    "widgets_values_named": {
-    "filename_prefix": "cfg_ab/variant"
+    "filename_prefix": "cfg_anima/variant"
    }
   },
   {

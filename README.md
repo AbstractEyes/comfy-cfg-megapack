@@ -64,7 +64,7 @@ At every step the model gives a conditional prediction `c` and an unconditional 
 |---|---|---|---|
 | 1 | When | CFG When: Schedule and Window | how the scale changes over the run, and where guidance is on at all |
 | 2 | Weak branch | CFG Weak Branch: Perturbed Self-Attention | an extra pass of the model with some self-attention degraded, to guide away from |
-| 3 | Combine | CFG Mix: Scale Rules, Direction Rules, Your Own Formula | how `c` and `u` become one prediction |
+| 3 | Combine | CFG Mix: Scale Rules, Direction Rules, Pentachoron, Your Own Formula | how `c` and `u` become one prediction |
 | 4 | Where | CFG Where: Frequency Bands, Region Mask | how strongly guidance acts on coarse versus fine detail, and inside versus outside a mask |
 | 5 | Correct | CFG Correct: Magnitude | pulls the result's size back toward the conditional prediction (against over-saturation) |
 | 6 | Govern | CFG Govern: Angle Band | holds the angle between the result and its home inside a band: the last word on direction |
@@ -201,9 +201,9 @@ Two stages come from research lines of our own, both published with their code:
   On SDXL (1024 x 1024, 50 steps, cfg 7) the guided prediction sits 25 to 33 degrees from the conditional one over
   the first 10 steps, under 20 degrees from the 14th step and under 10 from the 23rd, so a leash of about 20
   degrees acts on the composition steps and leaves the detail steps alone.
-- **The aleph weighting and the pentachoron formula** (`formulas/pentachoron.txt`, for CFG Mix: Your Own Formula).
+- **The aleph weighting on the pentachoron** (CFG Mix: Pentachoron).
   The aleph address of AlephLLM and [amoe-lora](https://github.com/AbstractEyes/amoe-lora) weighs anchors by
-  `sinh(u_k) / sum_j cosh(u_j)`: signed amplitudes that never select. The formula reads each pixel's plain-CFG push,
+  `sinh(u_k) / sum_j cosh(u_j)`: signed amplitudes that never select. The node reads each pixel's plain-CFG push,
   in every group of 4 latent channels, on the 5 vertices of a regular pentachoron (the 4-simplex; unit vertices,
   pairwise cosine -1/4), and rebuilds it with that weighting: small pushes come back as plain CFG, no push exceeds
   4 tau, and a pixel pushing hard along one vertex damps its other four. SDXL's 4 channels hold one pentachoron;
@@ -232,9 +232,9 @@ Run these with ComfyUI's own Python (the tools also use Pillow and numpy, which 
 
 | Command (from this folder) | What it checks | Needs |
 |---|---|---|
-| `python tests/test_engine.py` | 51 checks of the guidance maths: neutral settings, library agreement, schedules and windows, bands, regions, corrections, the governor, the guider rules, the probe, plan install and clear, flow models (the shift, the space converters, sigma 1, single-frame latents), the transformer patches, every paper node on eps and flow models, the model-aware defaults, and the checked formula language (53 escape attempts refused; 15 formulas, every documented one among them, bit-identical to full Python) | CPU |
-| `python tools/smoke_test.py --port 8188` | 46 SDXL cases through ComfyUI's API: every stage node runs, neutral cases match plain sampling, variants change the image, a formula's import and file write are refused | a running ComfyUI (CPU-only works) |
-| `python tools/smoke_test.py --port 8188 --model anima` | 26 Anima cases, including the flow variables read inside ComfyUI and SEG on the transformer | the Anima files |
+| `python tests/test_engine.py` | 53 checks of the guidance maths: neutral settings, library agreement, schedules and windows, bands, regions, corrections, the governor, the guider rules, the probe, plan install and clear, flow models (the shift, the space converters, sigma 1, single-frame latents), the transformer patches, every paper node on eps and flow models, the model-aware defaults, the pentachoron rule (against a written-out reference, and bit for bit against its formula), and the checked formula language (53 escape attempts refused; 15 formulas, every documented one among them, bit-identical to full Python) | CPU |
+| `python tools/smoke_test.py --port 8188` | 48 SDXL cases through ComfyUI's API: every stage node runs, neutral cases match plain sampling, variants change the image, a formula's import and file write are refused | a running ComfyUI (CPU-only works) |
+| `python tools/smoke_test.py --port 8188 --model anima` | 28 Anima cases, including the flow variables read inside ComfyUI and SEG on the transformer | the Anima files |
 | `python tools/smoke_test.py --port 8188 --formula-python --only formula_python_import` | a formula that imports a module runs, and gives plain CFG back | a ComfyUI started with `CFG_MEGAPACK_FORMULA_PYTHON=1` |
 | `python tools/smoke_test.py --port 8188 --papers` (add `--model anima` for Anima) | every paper node with its defaults | a running ComfyUI |
 | `python tools/determinism_check.py --port 8188` | ComfyUI's own run-to-run repeatability and the neutral equalities | a running ComfyUI |

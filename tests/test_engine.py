@@ -834,6 +834,80 @@ def test_pentachoron_formula_on_4_and_16_channels():
     assert out.shape == x.shape and bool(torch.isfinite(out).all())
 
 
+def pentachoron_plan(k=1.0, space="eps"):
+    return plan_with(mix={"kind": "rule", "rule": "pentachoron", "knobs": {"k": k}, "space": space, "scale": -1.0})
+
+
+def penta_reference(c, u, w, k=1.0):
+    """The pentachoron rule written out for 4 channels with sinh and cosh themselves (no overflow guard)."""
+    r = 1 / math.sqrt(5)
+    V = torch.tensor([[1., 1., 1., -r], [1., -1., -1., -r], [-1., 1., -1., -r], [-1., -1., 1., -r],
+                      [0., 0., 0., 4 * r]], dtype=c.dtype) * (math.sqrt(5) / 4)
+    a = torch.einsum("kc,bchw->bkhw", V, (w - 1) * (c - u))
+    tau = k * a.pow(2).mean(dim=(1, 2, 3), keepdim=True).sqrt() + 1e-12
+    z = a / tau
+    return c + 4 * tau * torch.einsum("kc,bkhw->bchw", V, torch.sinh(z)) / torch.cosh(z).sum(dim=1, keepdim=True)
+
+
+def test_pentachoron_rule_on_4_and_16_channels():
+    torch.manual_seed(2)
+    c4 = torch.randn(2, 4, 16, 16, dtype=torch.float64)
+    u4 = c4 + 0.15 * torch.randn_like(c4)
+    ref = penta_reference(c4, u4, 7.0)
+    assert float((cv.pentachoron_cfg(c4, u4, 7.0) - ref).abs().max()) <= 1e-10 * (1 + float(ref.abs().max()))
+    c16 = torch.randn(2, 16, 16, 16, dtype=torch.float64)
+    u16 = c16 + 0.15 * torch.randn_like(c16)
+    out = cv.pentachoron_cfg(c16, u16, 7.0)
+    assert out.shape == c16.shape and bool(torch.isfinite(out).all())
+    assert close(cv.pentachoron_cfg(c16, u16, 7.0, k=1e6), cfg(c16, u16, 7.0), 1e-6)     # a large k: plain CFG
+    # each pixel's push in each group of 4 channels stays within 4 tau (tau = the image's RMS vertex coordinate)
+    r = 1 / math.sqrt(5)
+    V = torch.tensor([[1., 1., 1., -r], [1., -1., -1., -r], [-1., 1., -1., -r], [-1., -1., 1., -r], [0., 0., 0., 4 * r]],
+                     dtype=torch.float64) * (math.sqrt(5) / 4)
+    a = torch.einsum('kc,bgchw->bgkhw', V, (6.0 * (c16 - u16)).reshape(2, 4, 4, 16, 16))
+    tau = a.pow(2).mean(dim=(1, 2, 3, 4)).sqrt().view(2, 1, 1, 1)
+    push = (out - c16).reshape(2, 4, 4, 16, 16).norm(dim=2)
+    assert bool((push <= 4 * tau * (1 + 1e-9)).all()) and float(push.max()) > 0
+    try:
+        cv.pentachoron_cfg(torch.randn(1, 6, 8, 8), torch.randn(1, 6, 8, 8))
+    except ValueError as e:
+        assert "divisible by 4" in str(e)
+    else:
+        raise AssertionError("6 channels must raise")
+    # through the engine: an SDXL batch in every space, and an Anima latent (16 channels, single frame)
+    x, c, u, sig = batch()
+    for space in engine.SPACES:
+        out = run(pentachoron_plan(space=space), x, c, u, sig)
+        assert out.shape == x.shape and bool(torch.isfinite(out).all()), space
+    for space in engine.SPACES:            # the plain-CFG limit holds in every space (the rule computes in float64)
+        out = run(pentachoron_plan(k=1e6, space=space), x, c, u, sig)
+        assert out.dtype == x.dtype and close(out, cfg(c, u, 6.0), 1e-6), space
+    c32, u32 = c16.float(), u16.float()    # a float32 input: computed in float64, returned in float32
+    out32 = cv.pentachoron_cfg(c32, u32, 7.0, k=1e6)
+    assert out32.dtype == torch.float32 and close(out32, cfg(c32, u32, 7.0), 1e-6)
+    xf, cf, uf, sf = flow_batch(channels=16, frame=True)
+    out = run_flow(pentachoron_plan(), xf, cf, uf, sf)
+    assert out.shape == xf.shape and bool(torch.isfinite(out).all())
+    assert "pentachoron" in engine.describe_plan(pentachoron_plan())
+
+
+def test_pentachoron_node_equals_the_formula():
+    # the node's rule and formulas/pentachoron.txt through the formula box: the same tensor, bit for bit, in the
+    # noise and velocity spaces (both float64 there); on the denoised image the formula runs in float32 and the node
+    # in float64, so they agree to float32 rounding
+    text = open(os.path.join(ROOT, "formulas", "pentachoron.txt"), encoding="utf-8").read()
+    x, c, u, sig = batch()
+    xf, cf, uf, sf = flow_batch(channels=16, frame=True)
+    for space in ("eps", "v"):
+        assert torch.equal(run(pentachoron_plan(space=space), x, c, u, sig),
+                           run(formula_plan(text, space), x, c, u, sig)), space
+        assert torch.equal(run_flow(pentachoron_plan(space=space), xf, cf, uf, sf),
+                           run_flow(formula_plan(text, space), xf, cf, uf, sf)), space
+    assert close(run(pentachoron_plan(space="x0"), x, c, u, sig), run(formula_plan(text, "x0"), x, c, u, sig), 1e-5)
+    k_text = text.replace("k = 1.0", "k = 0.25", 1)
+    assert torch.equal(run(pentachoron_plan(k=0.25), x, c, u, sig), run(formula_plan(k_text), x, c, u, sig))
+
+
 class _formula_python:
     """Turn the full-Python opt-in on for a block (it is off by default), and restore it after."""
 

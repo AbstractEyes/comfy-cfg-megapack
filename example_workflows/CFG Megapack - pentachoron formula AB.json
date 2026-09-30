@@ -696,7 +696,7 @@
     "cfg_penta/plain"
    ],
    "widgets_values_named": {
-    "filename_prefix": "cfg_formula/plain"
+    "filename_prefix": "cfg_penta/plain"
    }
   },
   {
@@ -787,7 +787,7 @@
     "cfg_penta/variant"
    ],
    "widgets_values_named": {
-    "filename_prefix": "cfg_formula/formula"
+    "filename_prefix": "cfg_penta/variant"
    }
   },
   {

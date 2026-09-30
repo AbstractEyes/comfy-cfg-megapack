@@ -14,8 +14,8 @@
    "file": "cfg_showcase/anima/plain_cfg4.5_00002_.png"
   },
   "plain_cfg9": {
-   "seconds": 18.6,
-   "file": "cfg_showcase/anima/plain_cfg9_00001_.png"
+   "file": "cfg_showcase/anima/plain_cfg9_00003_.png",
+   "seconds": 60.7
   },
   "APG": {
    "seconds": 18.6,
@@ -110,10 +110,10 @@
    "file": "cfg_showcase/anima/Govern20_00001_.png"
   },
   "Pentachoron": {
-   "seconds": 18.6,
+   "file": "cfg_showcase/anima/Pentachoron_00003_.png",
+   "seconds": 39.8,
    "cfg": 9.0,
-   "overrides": {},
-   "file": "cfg_showcase/anima/Pentachoron_00001_.png"
+   "overrides": {}
   },
   "SMCCFG": {
    "seconds": 19.1,

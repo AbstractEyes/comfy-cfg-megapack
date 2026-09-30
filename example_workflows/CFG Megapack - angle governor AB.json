@@ -740,7 +740,7 @@
     "cfg_govern/plain"
    ],
    "widgets_values_named": {
-    "filename_prefix": "cfg_formula/plain"
+    "filename_prefix": "cfg_govern/plain"
    }
   },
   {
@@ -831,7 +831,7 @@
     "cfg_govern/variant"
    ],
    "widgets_values_named": {
-    "filename_prefix": "cfg_formula/formula"
+    "filename_prefix": "cfg_govern/variant"
    }
   },
   {

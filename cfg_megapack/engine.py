@@ -472,6 +472,7 @@ MIX_RULES: Dict[str, Tuple[str, Tuple[str, ...]]] = {
     "tangential_damping": ("tcfg", ()),
     "angle_limit": ("adg", ("max_angle",)),
     "mahiro": ("mahiro", ()),
+    "pentachoron": ("pentachoron", ("k",)),
 }
 THREE_WAY_RULES = ("perp_neg", "separate_negative", "negative_as_null")
 

@@ -25,6 +25,7 @@ fixed to compare settings on the same image (only the changed branch runs again)
 | CFG Megapack - stage chain AB | plain CFG against the whole chain of stage nodes; only the APG mix is on, the other stages are bypassed | select a stage node and press Ctrl+B to switch it on; the Plan Readout shows what is active |
 | CFG Megapack - paper node AB | plain CFG against one paper node (APG) at cfg 14, where high-scale artifacts show | swap the APG node for any other paper node (double-click the canvas, type the paper's name) |
 | CFG Megapack - your formula AB | plain CFG against a formula you type | edit the formula; see [Your Own Formula](#3-cfg-mix-your-own-formula) |
+| CFG Megapack - pentachoron AB | plain CFG against the [Pentachoron](#3-cfg-mix-pentachoron) node | change k: larger is closer to plain CFG (1000000 is plain CFG) |
 | CFG Megapack - pentachoron formula AB | plain CFG against the pentachoron formula | change `k = 1.0` in the first line: larger is closer to plain CFG |
 | CFG Megapack - angle governor AB | plain CFG against the angle governor at 20 degrees, whole image | try 10-30 degrees, or unit = each pixel |
 | CFG Megapack - negative vs null guider AB | ComfyUI's CFG guider against the positive/negative/null guider (Perp-Neg) | uses SamplerCustomAdvanced; the null prompt is the empty text |
@@ -107,6 +108,39 @@ projections, caps and clips do not. **auto** uses the space the method was publi
 denoised image for APG and the angle rule; on flow models methods published on the noise run on the velocity.
 The Adaptive Guidance paper node starts on the denoised image instead (its section says why).
 
+### 3 CFG Mix: Pentachoron
+
+In-house: the aleph weighting on the 4-simplex. The node reads each pixel's plain-CFG push past the conditional,
+`g = (w - 1)(c - u)`, on the 5 vertices of a regular pentachoron (the 4-simplex: 5 unit vertices in 4 dimensions,
+each pair at cosine -1/4) in every group of 4 latent channels, and rebuilds it with signed amplitudes that never
+select a vertex:
+
+```
+a   = V g                          the push's 5 vertex coordinates at each pixel
+tau = k * RMS(a)                   one scale per image
+z   = a / tau
+P   = 4 tau * sum_k sinh(z_k) v_k / sum_j cosh(z_j)
+out = c + P
+```
+
+Small pushes come back as plain CFG; a pixel's push in a group stays within `4 tau`, and a pixel pushing hard along
+one vertex damps its other four (the budget is shared). SDXL and SD1.5 latents hold one pentachoron per pixel (4
+channels); Anima's hold four (16 channels). A channel count that does not divide by 4 stops with a message.
+
+| Input | What it does |
+|---|---|
+| k | temperature (default 1): larger is closer to plain CFG (1000000 is plain CFG); smaller limits each pixel's push more firmly |
+| scale | the guidance scale w; -1 uses the sampler's cfg |
+| space | where the rule is computed (default noise). The rule is nonlinear, so the space changes the image; on flow models the noise is the noise itself |
+
+![The pentachoron on SDXL](docs/images/sdxl/Pentachoron.jpg)
+
+<sub>SDXL, cfg 14, k = 1; node graph: [docs/showcase/sdxl/Pentachoron.json](docs/showcase/sdxl/Pentachoron.json)</sub>
+
+![The pentachoron on Anima](docs/images/anima/Pentachoron.jpg)
+
+<sub>Anima (16 channels, four pentachora), cfg 9, k = 1; node graph: [docs/showcase/anima/Pentachoron.json](docs/showcase/anima/Pentachoron.json)</sub>
+
 ### 3 CFG Mix: Your Own Formula
 
 Type the guided prediction as a Python expression, or several lines that assign `result`.
@@ -165,17 +199,9 @@ It is off unless you set it, and ComfyUI reads it when a formula compiles, so a 
 to pick it up. With it on, every workflow you queue runs its formulas as Python on your machine, and a formula can
 then reach anything Python can: queue only workflows you trust. The console notes it once, at the first formula.
 
-Anima's latents arrive as (batch, 16, height, width). `formulas/pentachoron.txt` is a longer example (paste it whole, space noise):
-the aleph weighting on the 5 vertices of a regular pentachoron in every group of 4 channels; `k` sets how firmly
-large pushes are limited (1e6 = plain CFG).
-
-![The pentachoron formula on SDXL](docs/images/sdxl/Pentachoron.jpg)
-
-<sub>SDXL, cfg 14, k = 1; node graph: [docs/showcase/sdxl/Pentachoron.json](docs/showcase/sdxl/Pentachoron.json)</sub>
-
-![The pentachoron formula on Anima](docs/images/anima/Pentachoron.jpg)
-
-<sub>Anima (16 channels, four pentachora), cfg 9, k = 1; node graph: [docs/showcase/anima/Pentachoron.json](docs/showcase/anima/Pentachoron.json)</sub>
+Anima's latents arrive as (batch, 16, height, width). `formulas/pentachoron.txt` is a longer example (paste it
+whole, space noise): the [Pentachoron](#3-cfg-mix-pentachoron) node's rule written as a formula, which gives the
+same numbers bit for bit.
 
 ### 4 CFG Where: Frequency Bands
 

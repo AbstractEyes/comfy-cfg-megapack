@@ -236,6 +236,41 @@ class CFGMixDirection(io.ComfyNode):
         return io.NodeOutput(_patched(model, lambda p: p.__setitem__("mix", spec)))
 
 
+class CFGMixPentachoron(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="CFGP_MixPentachoron",
+            display_name="CFG Mix: Pentachoron",
+            category=f"{CAT}/3 mix",
+            description=("In-house: the aleph weighting on the 4-simplex. Each pixel's plain-CFG push past the "
+                         "conditional, (w - 1)(c - u), is read on the 5 vertices of a regular pentachoron in every "
+                         "group of 4 latent channels and rebuilt as sum_k sinh(z_k) v_k / sum_j cosh(z_j): signed "
+                         "amplitudes that never select. Small pushes come back as plain CFG; a pixel's push in a group "
+                         "stays within 4 tau (tau = k times the image's RMS vertex coordinate), and a pixel pushing "
+                         "hard along one vertex damps its other four. Latents whose channel count divides by 4: SDXL "
+                         "and SD1.5 (one pentachoron), Anima (16 channels, four)."),
+            search_aliases=["pentachoron", "4-simplex", "simplex guidance", "aleph"],
+            inputs=[
+                io.Model.Input("model"),
+                io.Float.Input("k", default=1.0, min=0.01, max=1000000.0, step=0.01,
+                               tooltip="Temperature: larger is closer to plain CFG (1000000 is plain CFG), smaller "
+                                       "a firmer limit on each pixel's push."),
+                io.Float.Input("scale", default=-1.0, min=-1.0, max=100.0, step=0.1, tooltip=SCALE_TIP),
+                io.Combo.Input("space", options=SPACE_FIXED, default="noise (eps)",
+                               tooltip="Where the rule is computed; the rule is nonlinear, so the space changes the "
+                                       "image. Noise is its own space (on flow models, the noise itself)."),
+            ],
+            outputs=[io.Model.Output()],
+        )
+
+    @classmethod
+    def execute(cls, model, k, scale, space) -> io.NodeOutput:
+        spec = {"kind": "rule", "rule": "pentachoron", "scale": float(scale), "knobs": {"k": float(k)},
+                "space": _space(space)}
+        return io.NodeOutput(_patched(model, lambda p: p.__setitem__("mix", spec)))
+
+
 FORMULA_HELP = (
     "Write the guided prediction as a Python expression (or several lines that assign `result`). "
     "Variables: c and u (conditional and unconditional predictions in the chosen space), w (the scheduled scale), "
@@ -668,8 +703,8 @@ def _paper_node(p: papers.Paper) -> type:
 
 PAPER_NODES = [_paper_node(p) for p in papers.PAPERS]
 
-NODES = [CFGWhen, CFGWeakPerturbed, CFGMixScale, CFGMixDirection, CFGMixFormula, CFGWhereBands, CFGWhereRegion,
-         CFGCorrect, CFGGovernAngle, CFGProbe, CFGReadout, CFGClear, CFGThreeWayGuider] + PAPER_NODES
+NODES = [CFGWhen, CFGWeakPerturbed, CFGMixScale, CFGMixDirection, CFGMixPentachoron, CFGMixFormula, CFGWhereBands,
+         CFGWhereRegion, CFGCorrect, CFGGovernAngle, CFGProbe, CFGReadout, CFGClear, CFGThreeWayGuider] + PAPER_NODES
 
 
 class CFGMegapackExtension(ComfyExtension):

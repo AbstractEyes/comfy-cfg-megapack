@@ -14,8 +14,8 @@
    "file": "cfg_showcase/sdxl/plain_cfg7_00002_.png"
   },
   "plain_cfg14": {
-   "seconds": 10.8,
-   "file": "cfg_showcase/sdxl/plain_cfg14_00001_.png"
+   "file": "cfg_showcase/sdxl/plain_cfg14_00003_.png",
+   "seconds": 49.0
   },
   "RescaleCFG": {
    "seconds": 10.7,
@@ -322,10 +322,10 @@
    "file": "cfg_showcase/sdxl/Govern20_00001_.png"
   },
   "Pentachoron": {
-   "seconds": 21.9,
+   "file": "cfg_showcase/sdxl/Pentachoron_00003_.png",
+   "seconds": 18.2,
    "cfg": 14.0,
-   "overrides": {},
-   "file": "cfg_showcase/sdxl/Pentachoron_00001_.png"
+   "overrides": {}
   },
   "CorrectRescale": {
    "seconds": 21.5,

@@ -938,6 +938,41 @@ def reinhard_cfg(d_c, d_u, w=7.5, multiplier=1.0):
     return d_u + w * (g / mag * new)
 
 
+@_keep_dtype
+def pentachoron_cfg(d_c, d_u, w=7.5, k=1.0):
+    """The pentachoron rule [noise]: the aleph weighting on the 4-simplex. In-house (CFG Megapack, AbstractPhil and
+    Claude 2026; no paper).
+
+    g = (w - 1)(d_c - d_u), plain CFG's push past the conditional. Every group of 4 channels holds one pentachoron,
+    V = the 5 unit vertices of a regular 4-simplex (pairwise cosine -1/4): a = V g per pixel (its 5 vertex
+    coordinates), tau = k RMS(a) per sample, z = a / tau, and P = 4 tau sum_k sinh(z_k) v_k / sum_j cosh(z_j):
+    signed amplitudes, never a selector. d_hat = d_c + P. Small pushes return as plain CFG (P -> g as z -> 0, since
+    V^T V = 5/4 I); a pixel's push in a group stays within 4 tau, and a pixel pushing hard along one vertex damps its
+    other four. k: larger is closer to plain CFG (1e6 = plain CFG), smaller a firmer per-pixel limit. Needs a channel
+    count divisible by 4 (SDXL / SD1.5: one pentachoron; Anima and other 16-channel latents: four).
+    Computed in float64 whatever the input (the result comes back in the input's dtype): as z -> 0 the numerator
+    exp(z - m) - exp(-z - m) cancels, and float32 would lose the plain-CFG limit (8e-3 of the push at k = 1e6).
+    Defaults: k 1. Extra cost: none.
+    """
+    if d_c.shape[1] % 4:
+        raise ValueError(f"the pentachoron rule needs a channel count divisible by 4, not {d_c.shape[1]}")
+    out_dtype = d_c.dtype
+    d_c, d_u = d_c.double(), d_u.double()
+    w = _scalar(w, d_c)
+    r = 1 / math.sqrt(5)
+    V = torch.tensor([[1., 1., 1., -r], [1., -1., -1., -r], [-1., 1., -1., -r], [-1., -1., 1., -r],
+                      [0., 0., 0., 4 * r]], dtype=d_c.dtype, device=d_c.device) * (math.sqrt(5) / 4)
+    g = (w - 1) * (d_c - d_u)
+    G = g.reshape(g.shape[0], g.shape[1] // 4, 4, *g.shape[2:])          # groups of 4 channels
+    a = torch.einsum("kc,bgc...->bgk...", V, G)
+    tau = k * a.pow(2).mean(dim=tuple(range(1, a.ndim)), keepdim=True).sqrt() + 1e-12
+    z = a / tau
+    m = z.abs().amax(dim=2, keepdim=True)                                   # overflow guard; cancels exactly
+    ep, en = torch.exp(z - m), torch.exp(-z - m)
+    P = 4 * tau * torch.einsum("kc,bgk...->bgc...", V, ep - en) / (ep + en).sum(dim=2, keepdim=True)
+    return (d_c + P.reshape(g.shape)).to(out_dtype)
+
+
 class SMCState:
     """Stores the corrected guidance error of the previous step for SMC-CFG."""
 
@@ -3428,6 +3463,8 @@ REGISTRY: Dict[str, Dict[str, Any]] = {
     "mahiro": _reg(mahiro, "A", "x0", node=True, cite="ComfyUI Mahiro (PR #5975)", batch_coupled=True),
     "reinhard_cfg": _reg(reinhard_cfg, "A", "x0", {"multiplier": 1.0}, node=True,
                          cite="ComfyUI LatentOperationTonemapReinhard"),
+    "pentachoron": _reg(pentachoron_cfg, "A", "noise", {"k": 1.0}, node=True,
+                        cite="in-house, CFG Megapack (AbstractPhil and Claude 2026)"),
     "smc_cfg": _reg(smc_cfg, "A", "noise", {"lam": 5.0, "k": 0.2, "switching": "sign"}, node=True,
                     state=lambda k: SMCState(), cite="Wang et al. 2026, arXiv 2603.03281"),
     "pmc_cfg": _reg(pmc_cfg, "A", "x0", {"gamma_cap": 1.05}, node=True, cite="Peng & Ma 2026, arXiv 2609.24287"),

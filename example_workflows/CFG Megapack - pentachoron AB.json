@@ -1,5 +1,5 @@
 {
- "id": "45a2f2b2-2c92-4676-933f-4671ec327485",
+ "id": "291a3cdd-92f7-45d4-8e75-5a89ef0611a4",
  "revision": 0,
  "last_node_id": 13,
  "last_link_id": 38,
@@ -246,14 +246,14 @@
   },
   {
    "id": 5,
-   "type": "CFGP_APG",
+   "type": "CFGP_MixPentachoron",
    "pos": [
     890,
     40
    ],
    "size": [
-    360,
-    200
+    330,
+    130
    ],
    "flags": {},
    "order": 2,
@@ -266,47 +266,20 @@
      "link": 21
     },
     {
+     "localized_name": "k",
+     "name": "k",
+     "type": "FLOAT",
+     "widget": {
+      "name": "k"
+     },
+     "link": null
+    },
+    {
      "localized_name": "scale",
      "name": "scale",
      "type": "FLOAT",
      "widget": {
       "name": "scale"
-     },
-     "link": null
-    },
-    {
-     "localized_name": "eta",
-     "name": "eta",
-     "type": "FLOAT",
-     "widget": {
-      "name": "eta"
-     },
-     "link": null
-    },
-    {
-     "localized_name": "norm_threshold",
-     "name": "norm_threshold",
-     "type": "FLOAT",
-     "widget": {
-      "name": "norm_threshold"
-     },
-     "link": null
-    },
-    {
-     "localized_name": "momentum",
-     "name": "momentum",
-     "type": "FLOAT",
-     "widget": {
-      "name": "momentum"
-     },
-     "link": null
-    },
-    {
-     "localized_name": "formulation",
-     "name": "formulation",
-     "type": "COMBO",
-     "widget": {
-      "name": "formulation"
      },
      "link": null
     },
@@ -331,18 +304,20 @@
      ]
     }
    ],
-   "title": "APG: Adaptive Projected Guidance (Sadat et al. 2025)",
+   "title": "3 Mix: pentachoron",
    "properties": {
-    "Node name for S&R": "CFGP_APG"
+    "Node name for S&R": "CFGP_MixPentachoron"
    },
    "widgets_values": [
-    -1.0,
-    0.0,
-    15.0,
-    -0.5,
-    "paper",
-    "auto (the method's own)"
-   ]
+    1.0,
+    -1,
+    "noise (eps)"
+   ],
+   "widgets_values_named": {
+    "k": 1.0,
+    "scale": -1,
+    "space": "noise (eps)"
+   }
   },
   {
    "id": 6,
@@ -491,7 +466,7 @@
     1234,
     "randomize",
     30,
-    14.0,
+    7,
     "dpmpp_2m",
     "karras",
     1
@@ -500,7 +475,7 @@
     "seed": 1234,
     "control_after_generate": "randomize",
     "steps": 30,
-    "cfg": 14.0,
+    "cfg": 7,
     "sampler_name": "dpmpp_2m",
     "scheduler": "karras",
     "denoise": 1
@@ -610,7 +585,7 @@
      ]
     }
    ],
-   "title": "Sampler: APG",
+   "title": "Sampler: pentachoron",
    "properties": {
     "Node name for S&R": "KSampler"
    },
@@ -618,7 +593,7 @@
     1234,
     "randomize",
     30,
-    14.0,
+    7,
     "dpmpp_2m",
     "karras",
     1
@@ -627,7 +602,7 @@
     "seed": 1234,
     "control_after_generate": "randomize",
     "steps": 30,
-    "cfg": 14.0,
+    "cfg": 7,
     "sampler_name": "dpmpp_2m",
     "scheduler": "karras",
     "denoise": 1
@@ -718,10 +693,10 @@
    "title": "Save: plain",
    "properties": {},
    "widgets_values": [
-    "cfg_paper/plain"
+    "cfg_penta/plain"
    ],
    "widgets_values_named": {
-    "filename_prefix": "cfg_paper/plain"
+    "filename_prefix": "cfg_penta/plain"
    }
   },
   {
@@ -762,7 +737,7 @@
      ]
     }
    ],
-   "title": "Decode: APG",
+   "title": "Decode: pentachoron",
    "properties": {
     "Node name for S&R": "VAEDecode"
    }
@@ -806,13 +781,13 @@
      "links": null
     }
    ],
-   "title": "Save: APG",
+   "title": "Save: pentachoron",
    "properties": {},
    "widgets_values": [
-    "cfg_paper/apg"
+    "cfg_penta/variant"
    ],
    "widgets_values_named": {
-    "filename_prefix": "cfg_paper/apg"
+    "filename_prefix": "cfg_penta/variant"
    }
   },
   {

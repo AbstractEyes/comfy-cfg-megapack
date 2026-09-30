@@ -31,9 +31,9 @@ ROOT = os.path.dirname(HERE)                     # the repository = the custom n
 sys.path.insert(0, ROOT)
 from cfg_megapack import papers as _papers  # noqa: E402  (the paper node ids; imports without ComfyUI)
 
-NODE_IDS = ["CFGP_When", "CFGP_WeakPerturbed", "CFGP_MixScale", "CFGP_MixDirection", "CFGP_MixFormula",
-            "CFGP_WhereBands", "CFGP_WhereRegion", "CFGP_Correct", "CFGP_GovernAngle", "CFGP_Probe", "CFGP_Readout",
-            "CFGP_Clear", "CFGP_ThreeWayGuider"] + [f"CFGP_{p.key}" for p in _papers.PAPERS]
+NODE_IDS = ["CFGP_When", "CFGP_WeakPerturbed", "CFGP_MixScale", "CFGP_MixDirection", "CFGP_MixPentachoron",
+            "CFGP_MixFormula", "CFGP_WhereBands", "CFGP_WhereRegion", "CFGP_Correct", "CFGP_GovernAngle", "CFGP_Probe",
+            "CFGP_Readout", "CFGP_Clear", "CFGP_ThreeWayGuider"] + [f"CFGP_{p.key}" for p in _papers.PAPERS]
 
 
 def _find_comfy():
@@ -229,6 +229,10 @@ def formula(text, space="noise (eps)"):
     return ("CFGP_MixFormula", {"formula": text, "space": space, "scale": -1.0})
 
 
+def pentachoron(k=1.0, space="noise (eps)"):
+    return ("CFGP_MixPentachoron", {"k": k, "scale": -1.0, "space": space})
+
+
 def govern(**kw):
     d = {"max_angle_degrees": 30.0, "min_angle_degrees": 0.0, "unit": "whole image (one vector per image)",
          "home": "conditional (how far guidance turns the prediction)", "start_percent": 0.0, "end_percent": 1.0,
@@ -296,6 +300,8 @@ CASES = {
         mix_dir("angle_limit", max_angle_degrees=13.0), bands(high_multiplier=4.0)]), None),
     "formula_pentachoron": (chain("formula_pentachoron", [formula(PENTA)]), None),
     "formula_pentachoron_cfg_limit": (chain("formula_pentachoron_cfg_limit", [formula(PENTA_CFG)]), "plain_resident"),
+    "pentachoron": (chain("pentachoron", [pentachoron()]), None),
+    "pentachoron_cfg_limit": (chain("pentachoron_cfg_limit", [pentachoron(k=1e6)]), "plain_resident"),
     "full_stack_probe": (with_readout(chain("full_stack_probe", [
         when(shape="cosine_down", start_percent=0.0, end_percent=0.9), weak(scale=1.5), mix_dir("apg"),
         bands(high_multiplier=1.2), correct("rescale_std", strength=0.5), govern(max_angle_degrees=30.0),
@@ -323,7 +329,8 @@ EXPECT_ERROR = dict(SAFETY_ERROR)          # name -> a phrase the refusal must c
 # most in bf16 on a GPU (256 x 256, 6 steps, er_sde: mean 0.05 of 255 on the CPU, 2.6 on the GPU). Such a case
 # passes as ROUNDING when its mean difference stays under 5 levels; formula_cfg_x0 (same arithmetic as plain CFG)
 # must stay SAME, which rules out a fault in the formula path itself.
-ROUNDING_ONLY = {"formula_cfg_eps", "formula_cfg_velocity", "formula_flow_variables", "formula_pentachoron_cfg_limit"}
+ROUNDING_ONLY = {"formula_cfg_eps", "formula_cfg_velocity", "formula_flow_variables", "formula_pentachoron_cfg_limit",
+                 "pentachoron_cfg_limit"}
 
 if ANIMA:
     # the neutral set on 16-channel single-frame latents and the flow conversions, the flow variables inside ComfyUI,
@@ -333,7 +340,7 @@ if ANIMA:
     PICK = ("base", "plain_resident", "standard_rule", "formula_cfg_eps", "formula_cfg_x0", "bands_neutral", "region_full_mask",
             "guider_reference", "guider_negative_as_null", "govern_neutral", "formula_pentachoron_cfg_limit",
             "cfg_zero_star", "apg", "angle_limit", "weak_seg", "govern_image_20", "govern_pixel_20",
-            "formula_pentachoron", "when_window_chain_outside", "correct_rescale")
+            "formula_pentachoron", "pentachoron", "pentachoron_cfg_limit", "when_window_chain_outside", "correct_rescale")
     CASES = {**{n: CASES[n] for n in PICK},
              "formula_flow_variables": (chain("formula_flow_variables", [formula(FLOW_CHECK)]), "plain_resident"),
              "formula_cfg_velocity": (chain("formula_cfg_velocity", [formula("u + w * (c - u)", "velocity (v)")]),

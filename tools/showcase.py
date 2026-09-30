@@ -152,14 +152,13 @@ def stage_cases():
     gov = {"max_angle_degrees": 20.0, "min_angle_degrees": 0.0, "unit": "whole image (one vector per image)",
            "home": "conditional (how far guidance turns the prediction)", "start_percent": 0.0, "end_percent": 1.0,
            "space": "auto (the method's own)"}
-    penta = open(os.path.join(ROOT, "formulas", "pentachoron.txt"), encoding="utf-8").read()
     corr = {"method": "rescale_std", "strength": 0.7, "cap_ratio": 1.05, "mimic_scale": 4.0, "percentile": 0.995,
             "softness": 1.0, "space": "auto (the method's own)"}
     return {
         "Govern20": ("CFG Govern: Angle Band, 20 degrees", "in-house: after the AlephLM anchor governor",
                      [("CFGP_GovernAngle", gov)], "max 20 deg, whole image"),
-        "Pentachoron": ("CFG Mix: Your Own Formula, the pentachoron formula", "in-house: the aleph weighting on the 4-simplex",
-                        [("CFGP_MixFormula", {"formula": penta, "space": "noise (eps)", "scale": -1.0})], "k = 1"),
+        "Pentachoron": ("CFG Mix: Pentachoron", "in-house: the aleph weighting on the 4-simplex",
+                        [("CFGP_MixPentachoron", {"k": 1.0, "scale": -1.0, "space": "noise (eps)"})], "k = 1"),
         "CorrectRescale": ("CFG Correct: Magnitude, rescale_std", "Lin et al. 2024 (guidance rescale as a correction)",
                            [("CFGP_Correct", corr)], "strength 0.7"),
     }
@@ -271,7 +270,9 @@ def main():
         with open(os.path.join(graph_dir, f"{key}.json"), "w", encoding="utf-8") as f:
             json.dump(g, f, indent=1)
         guider = key in papers.BY_KEY and papers.BY_KEY[key].stage == "guider"
-        right_label = f"{title.split(':')[0].split(' (')[0]}, cfg {cfg:g}" + (f" ({note})" if note else "")
+        # a paper node is named before its colon (APG: ...); a stage node after it (CFG Mix: Pentachoron)
+        short = title.split(": ", 1)[1].split(",")[0] if title.startswith("CFG ") and ": " in title else title.split(":")[0]
+        right_label = f"{short.split(' (')[0]}, cfg {cfg:g}" + (f" ({note})" if note else "")
         if guider:
             panels = [(guider_refs[0], f"cfg {BASE_CFG:g}, no negative"),
                       (guider_refs[1], f"cfg {BASE_CFG:g}, negative prompt: {GUIDE_NEG}"),
