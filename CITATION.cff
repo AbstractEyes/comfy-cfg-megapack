@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use CFG Megapack, please cite it as below, and cite the papers behind the nodes you used (each node names its source)."
+title: "CFG Megapack: classifier-free guidance, taken apart, for ComfyUI"
+type: software
+authors:
+  - name: "AbstractPhil"
+    website: "https://huggingface.co/AbstractPhil"
+  - name: "Claude (Anthropic)"
+    website: "https://www.anthropic.com/claude"
+version: "0.1.1"
+date-released: "2026-09-29"
+license: MIT
+repository-code: "https://github.com/AbstractEyes/comfy-cfg-megapack"
+url: "https://huggingface.co/AbstractPhil"
+identifiers:
+  - type: url
+    value: "https://github.com/AbstractEyes/comfy-cfg-megapack"
+    description: "The source repository."
+  - type: url
+    value: "https://registry.comfy.org/nodes/comfy-cfg-megapack"
+    description: "The Comfy Registry listing (installs through ComfyUI-Manager)."
+  - type: url
+    value: "https://huggingface.co/AbstractPhil"
+    description: "AbstractPhil on Hugging Face: the research records behind the in-house directions."
+keywords:
+  - classifier-free guidance
+  - diffusion
+  - flow matching
+  - ComfyUI
+  - SDXL
+  - Anima

@@ -1,8 +1,12 @@
 [project]
 name = "comfy-cfg-megapack"
 description = "Classifier-free guidance for ComfyUI, taken apart into seven stages (when, weak branch, combine, where, correct, govern, measure), with 50 nodes named after the published guidance methods they implement, on one engine. SDXL, SD1.5 and flow-matching models (Anima)."
-version = "0.1.0"
+version = "0.1.1"
 license = { file = "LICENSE" }
+authors = [
+    { name = "AbstractPhil" },
+    { name = "Claude (Anthropic)" },
+]
 requires-python = ">=3.10"
 classifiers = [
     "Operating System :: OS Independent",
@@ -15,6 +19,7 @@ dependencies = []
 Repository = "https://github.com/AbstractEyes/comfy-cfg-megapack"
 Documentation = "https://github.com/AbstractEyes/comfy-cfg-megapack/blob/main/HOWTO.md"
 "Bug Tracker" = "https://github.com/AbstractEyes/comfy-cfg-megapack/issues"
+"Hugging Face" = "https://huggingface.co/AbstractPhil"
 
 [tool.comfy]
 # The Comfy Registry publisher id (registry.comfy.org: the name after @ on the publisher page). Publishing runs from

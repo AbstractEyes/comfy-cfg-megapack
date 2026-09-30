@@ -15,9 +15,13 @@ skip). SD1.5 uses the same UNet hooks as SDXL. The pack needs nothing beyond Com
 
 ## Install
 
-**ComfyUI-Manager:** Manager > Install via Git URL > `https://github.com/AbstractEyes/comfy-cfg-megapack`, then
-restart ComfyUI. Manager 4.x installs from a Git URL only with `allow_git_url_install = true` in the `[default]`
-section of its `config.ini` (in `ComfyUI/user/__manager/`); otherwise use the manual install below.
+**ComfyUI-Manager:** search for **CFG Megapack** in the Custom Nodes Manager, install, restart ComfyUI. The pack is
+on the [Comfy Registry](https://registry.comfy.org/nodes/comfy-cfg-megapack) as `comfy-cfg-megapack`, so comfy-cli
+installs it too: `comfy node install comfy-cfg-megapack`.
+
+**From the Git URL:** Manager > Install via Git URL > `https://github.com/AbstractEyes/comfy-cfg-megapack` (Manager
+4.x allows this only with `allow_git_url_install = true` in the `[default]` section of its `config.ini`, in
+`ComfyUI/user/__manager/`).
 
 **By hand:**
 
@@ -245,6 +249,28 @@ another seed first.
   ReCFG, CFG-Cache, the attention-level negatives (NAG, NASA, VSF, NegToMe), and block skipping on Anima.
 - **Wave 3**, planned: sampler nodes for CFG++, Rectified-CFG++, CFG-MP, predictor-corrector guidance, restart
   sampling, momentum, spherical guidance, particle guidance and Z-sampling.
+
+## Credits and citation
+
+CFG Megapack is a collaboration between AbstractPhil ([Hugging Face](https://huggingface.co/AbstractPhil), where the
+research records behind the in-house directions live; [GitHub](https://github.com/AbstractEyes)) and Claude,
+Anthropic's model, working through Claude Code; every commit is co-authored. The guidance methods themselves belong
+to the authors named on each node.
+
+If you use the pack, please cite it, and cite the papers behind the nodes you used:
+
+```bibtex
+@software{cfg_megapack_2026,
+  author  = {{AbstractPhil} and {Claude (Anthropic)}},
+  title   = {{CFG Megapack}: classifier-free guidance, taken apart, for {ComfyUI}},
+  year    = {2026},
+  version = {0.1.1},
+  url     = {https://github.com/AbstractEyes/comfy-cfg-megapack},
+  note    = {Comfy Registry: comfy-cfg-megapack. Research records: https://huggingface.co/AbstractPhil}
+}
+```
+
+GitHub's "Cite this repository" button gives the same entry from [CITATION.cff](CITATION.cff).
 
 ## License
 
