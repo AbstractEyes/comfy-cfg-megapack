@@ -248,8 +248,11 @@ FORMULA_HELP = (
     "plain CFG on the denoised image from any space: from_x0(to_x0(u) + w * (to_x0(c) - to_x0(u)))). Anima's "
     "latents arrive as (batch, 16, height, width): the single-frame "
     "axis is taken off and put back. Helpers (per sample): dot, norm, cos, proj(a, onto), orth(a, onto), std, mean, "
-    "lowpass(a, sigma), highpass(a, sigma), lerp, clamp, where, sqrt, exp, tanh, sign, torch, math; a formula may "
-    "import torch or numpy modules (import torch.nn.functional as F), nothing else. "
+    "lowpass(a, sigma), highpass(a, sigma), lerp, clamp, where, sqrt, exp, tanh, sign, and torch, F "
+    "(torch.nn.functional), torch.fft, torch.linalg and math with their maths functions. Formulas travel inside "
+    "workflow files, so they run as a checked maths language: arithmetic, assignments, assert, if, the variables and "
+    "helpers above and tensor methods; no imports, no names starting with '_', no file access. Full Python only when "
+    "ComfyUI starts with CFG_MEGAPACK_FORMULA_PYTHON=1 (off by default; only for workflows you trust). "
     "Example: u + w * orth(c - u, c) + 1.0 * proj(c - u, c)")
 
 

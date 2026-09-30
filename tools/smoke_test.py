@@ -9,6 +9,8 @@ Small and fast on purpose: 128x128 (Anima 256x256), 6 steps. Checks:
   * the probe writes its per-step file; the readout returns the plan text
   * Anima: the formula sees flow = True and the shift of the ModelSamplingAuraFlow node; the weak branch runs SEG on
     the DiT and refuses PAG with its message
+  * formulas are checked: an import is refused on the node and a torch.save while sampling, both naming the opt-in;
+    with --formula-python (a server started with CFG_MEGAPACK_FORMULA_PYTHON=1) an imported module runs instead
 Usage (ComfyUI already running):  python tools/smoke_test.py --port 8189 [--model anima]
 Writes logs/smoke_results.json (smoke_results_anima.json; *_only.json for an --only run) and prints a table."""
 import argparse
@@ -55,6 +57,8 @@ ap.add_argument("--vae", default="qwen_image_vae.safetensors")
 ap.add_argument("--shift", type=float, default=3.0, help="Anima's timestep shift (ModelSamplingAuraFlow)")
 ap.add_argument("--only", default="", help="comma-separated case names")
 ap.add_argument("--papers", action="store_true", help="run every paper node with its defaults instead of the stage cases")
+ap.add_argument("--formula-python", action="store_true",
+                help="the server was started with CFG_MEGAPACK_FORMULA_PYTHON=1: check that a full-Python formula runs")
 ap.add_argument("--output-dir", default="", help="the server's --output-directory, if it was given one")
 ap.add_argument("--comfy", default="", help="the ComfyUI folder (found by itself when the pack is in custom_nodes)")
 A = ap.parse_args()
@@ -297,7 +301,23 @@ CASES = {
         bands(high_multiplier=1.2), correct("rescale_std", strength=0.5), govern(max_angle_degrees=30.0),
         ("CFGP_Probe", {"filename_prefix": "smoke", "print_every": 0})]), "p6"), None),
 }
-EXPECT_ERROR = {}          # name -> a phrase the refusal must contain
+# formulas travel inside workflow files: a server started without the full-Python opt-in refuses an import on the
+# node (before sampling) and a file write while sampling, both naming the opt-in. A server started with it
+# (--formula-python) runs an imported module instead, and gives plain CFG back.
+if A.formula_python:
+    SAFETY = {"formula_python_import": (chain("formula_python_import", [formula(
+        "import torch.nn.functional as F\nresult = u + w * (c - u) + 0 * F.relu(c)", "denoised (x0)")]),
+        "plain_resident")}
+    SAFETY_ERROR = {}
+else:
+    SAFETY = {
+        "formula_import_refused": (chain("formula_import_refused", [formula("import os\nresult = c")]), None),
+        "formula_save_refused": (chain("formula_save_refused", [formula(
+            "torch.save(c, 'cfg_smoke_refused.pt')\nresult = c")]), None),
+    }
+    SAFETY_ERROR = {n: "CFG_MEGAPACK_FORMULA_PYTHON" for n in SAFETY}
+CASES.update(SAFETY)
+EXPECT_ERROR = dict(SAFETY_ERROR)          # name -> a phrase the refusal must contain
 # Neutral cases that convert to the noise or velocity space: the pack computes them in float64, plain CFG in float32,
 # so each step differs by float rounding. SDXL shows none of it; Anima (flow, sigma near 1) grows it through the run,
 # most in bf16 on a GPU (256 x 256, 6 steps, er_sde: mean 0.05 of 255 on the CPU, 2.6 on the GPU). Such a case
@@ -323,8 +343,9 @@ if ANIMA:
                  when(shape="cosine_down", start_percent=0.0, end_percent=0.9),
                  weak(method="seg (blurred queries)", scale=1.5), mix_dir("apg"), bands(high_multiplier=1.2),
                  correct("rescale_std", strength=0.5), govern(max_angle_degrees=30.0),
-                 ("CFGP_Probe", {"filename_prefix": "smoke", "print_every": 0})]), "p6"), None)}
-    EXPECT_ERROR = {"weak_pag_refused": "Use SEG"}
+                 ("CFGP_Probe", {"filename_prefix": "smoke", "print_every": 0})]), "p6"), None),
+             **SAFETY}
+    EXPECT_ERROR = {"weak_pag_refused": "Use SEG", **SAFETY_ERROR}
 
 
 def paper_case(p):

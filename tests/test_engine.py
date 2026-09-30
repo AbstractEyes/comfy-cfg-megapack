@@ -834,18 +834,119 @@ def test_pentachoron_formula_on_4_and_16_channels():
     assert out.shape == x.shape and bool(torch.isfinite(out).all())
 
 
+class _formula_python:
+    """Turn the full-Python opt-in on for a block (it is off by default), and restore it after."""
+
+    def __enter__(self):
+        self.before = os.environ.get(engine.FORMULA_PYTHON_ENV)
+        os.environ[engine.FORMULA_PYTHON_ENV] = "1"
+
+    def __exit__(self, *exc):
+        if self.before is None:
+            os.environ.pop(engine.FORMULA_PYTHON_ENV, None)
+        else:
+            os.environ[engine.FORMULA_PYTHON_ENV] = self.before
+
+
 def test_formula_imports():
+    # checked (the default): F is already there, imports are refused with the opt-in named
     x, c, u, sig = batch()
-    f = "import torch.nn.functional as F\nresult = u + w * (F.relu(c - u) - F.relu(u - c))"
+    assert not engine.formula_python_enabled(), "the full-Python opt-in must be off by default"
+    f = "result = u + w * (F.relu(c - u) - F.relu(u - c))"
     assert close(run(formula_plan(f, "x0"), x, c, u, sig), cfg(c, u, 6.0), 5e-4)
     f = "t = tuple(range(1, c.ndim))\nresult = c + 0 * c.mean(dim=t, keepdim=True)"
     assert close(run(formula_plan(f, "x0"), x, c, u, sig), c, 1e-6)
-    try:
-        run(formula_plan("import os\nresult = c", "x0"), x, c, u, sig)
-    except ValueError as e:
-        assert "torch and numpy only" in str(e)
-    else:
-        raise AssertionError("import os must be refused")
+    for text in ("import torch.nn.functional as F\nresult = c", "import os\nresult = c"):
+        try:
+            engine.compile_formula(text)
+        except ValueError as e:
+            assert "import" in str(e) and engine.FORMULA_PYTHON_ENV in str(e), str(e)
+        else:
+            raise AssertionError("a checked formula must refuse imports")
+    # full Python (the opt-in): torch and numpy imports as before, anything else refused
+    with _formula_python():
+        f = "import torch.nn.functional as F\nresult = u + w * (F.relu(c - u) - F.relu(u - c))"
+        assert close(run(formula_plan(f, "x0"), x, c, u, sig), cfg(c, u, 6.0), 5e-4)
+        try:
+            run(formula_plan("import os\nresult = c", "x0"), x, c, u, sig)
+        except ValueError as e:
+            assert "torch and numpy only" in str(e)
+        else:
+            raise AssertionError("import os must be refused")
+
+
+def test_checked_formulas_refuse_every_escape():
+    # formulas travel inside workflow files: nothing here may read or write a file, run code or reach a module.
+    # 'compile' cases are refused before anything runs (naming the opt-in); 'run' cases stop at the attribute guard
+    # or at a missing name. The canary file must not exist afterwards.
+    canary = os.path.join(tempfile.gettempdir(), f"cfg_formula_canary_{os.getpid()}.pt")
+    if os.path.exists(canary):
+        os.remove(canary)
+    cases = [
+        ("().__class__.__base__.__subclasses__()", "compile"), ("c.__class__", "compile"),
+        ("__import__('os')", "compile"), ("import os\nresult = c", "compile"), ("from os import system", "compile"),
+        ("lambda: 0", "compile"), ("def f():\n    return 0\nresult = c", "compile"),
+        ("for i in range(3):\n    pass\nresult = c", "compile"), ("while False:\n    pass\nresult = c", "compile"),
+        ("with open('x') as f:\n    pass\nresult = c", "compile"), ("c.shape = 1\nresult = c", "compile"),
+        ("c[0] = 0\nresult = c", "compile"), ("f'{c}'", "compile"), ("math.__dict__", "compile"),
+        ("print.__self__", "compile"), ("del c\nresult = u", "compile"), ("try:\n    c\nexcept Exception:\n    c", "compile"),
+        ("global c\nresult = c", "compile"), ("(y := c)", "compile"), ("b'x'", "compile"),
+        (f"torch.save(c, {canary!r})\nresult = c", "run"), (f"torch.load({canary!r})", "run"), ("torch.hub", "run"),
+        ("torch.ops", "run"), ("torch.utils", "run"), ("torch.from_file", "run"), ("c.numpy()", "run"),
+        ("c.storage()", "run"), ("c.untyped_storage()", "run"), ("c.mul_(0)", "run"), ("c.register_hook", "run"),
+        ("c.type('torch.DoubleTensor')", "run"), ("c.backward()", "run"), ("c.grad_fn", "run"), ("c.data", "run"),
+        (f"open({canary!r}, 'w')", "run"), ("getattr(c, 'numpy')", "run"), ("eval('1')", "run"),
+        ("exec('1')", "run"), ("type(c)", "run"), ("vars()", "run"), ("globals()", "run"),
+        ("(x for x in [1]).gi_frame", "run"), ("c.device.type", "run"), ("torch.float32.is_floating_point", "run"),
+        ("sum.x", "run"), ("dot.x", "run"), ("'{0}'.format(c)", "run"), ("F.torch", "run"), ("math.os", "run"),
+        ("torch.nn.Module", "run"), ("torch.fft.os", "run"), ("c.shape.x", "run"),
+    ]
+    env = {"c": torch.randn(1, 4, 8, 8), "u": torch.randn(1, 4, 8, 8), "w": 6.0}
+    for text, where in cases:
+        try:
+            compiled = engine.compile_formula(text)
+        except ValueError as e:
+            assert where == "compile", f"refused at compile but expected to run: {text!r}: {e}"
+            assert engine.FORMULA_PYTHON_ENV in str(e), text
+            continue
+        assert where == "run", f"compiled but should be refused before running: {text!r}"
+        try:
+            engine.eval_formula(compiled, dict(env), text)
+        except ValueError as e:
+            assert "CFG formula failed" in str(e), text
+        else:
+            raise AssertionError(f"a checked formula ran: {text!r}")
+    assert not os.path.exists(canary), "a checked formula wrote a file"
+
+
+def test_checked_formulas_match_full_python():
+    # every documented formula gives the same tensor, bit for bit, in the checked language and in full Python
+    penta = open(os.path.join(ROOT, "formulas", "pentachoron.txt"), encoding="utf-8").read()
+    wf = json.load(open(os.path.join(ROOT, "example_workflows", "CFG Megapack - pentachoron formula AB.json"),
+                        encoding="utf-8"))
+    penta_wf = next(n["widgets_values"][0] for n in wf["nodes"] if n.get("type") == "CFGP_MixFormula")
+    formulas = [penta, penta_wf, "u + w * (c - u)", "u + w * orth(c - u, c) + proj(c - u, c)",
+                "c + (w - 1) * (lowpass(c - u, 2) * 0.5 + highpass(c - u, 2) * 1.3)",
+                "d = c - u\nresult = u + w * orth(d, c) + proj(d, c)",
+                "u + (1 + (w - 1) * (1 - p)) * (c - u)", "u + (1 + (w - 1) * t_raw) * (c - u)",
+                "from_x0(to_x0(u) + w * (to_x0(c) - to_x0(u)))",
+                "g = torch.fft.fft2(c - u)\nresult = u + w * torch.fft.ifft2(g).real",
+                "n = torch.linalg.vector_norm(c - u, dim=1, keepdim=True)\nresult = c + (w - 1) * (c - u) / (1 + n)",
+                "m = (c - u).abs().amax(dim=1, keepdim=True)\nresult = where(m > 1, c, u + w * (c - u))",
+                "result = c if flow else u + w * (c - u)", "c + F.avg_pool2d(c - u, 3, 1, 1) * (w - 1)",
+                "s = sorted_ = None\nresult = u + w * (c - u)"]
+    c, u = torch.randn(2, 4, 8, 8, dtype=torch.float64), torch.randn(2, 4, 8, 8, dtype=torch.float64)
+    x, sig = torch.randn(2, 4, 8, 8, dtype=torch.float64), torch.full((2, 1, 1, 1), 0.6, dtype=torch.float64)
+    env = {"c": c, "u": u, "w": 6.0, "p": 0.25, **engine.formula_flow_env("eps", x, sig, True, 0.6, 3.0, 1 / 3)}
+    for text in formulas:
+        checked = engine.compile_formula(text)
+        assert checked[2] is True, "the default must be the checked language"
+        a = engine.eval_formula(checked, dict(env), text)
+        with _formula_python():
+            full = engine.compile_formula(text)
+            assert full[2] is False
+            b = engine.eval_formula(full, dict(env), text)
+        assert torch.equal(a, b), text[:60]
 
 
 def test_formula_builds_tensors_in_a_fresh_process():

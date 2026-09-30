@@ -125,8 +125,8 @@ Type the guided prediction as a Python expression, or several lines that assign 
 | `from_x0(a)`, `from_eps(a)`, `from_v(a)` | the way back into the node's space |
 
 Helpers (per image): `dot`, `norm`, `cos`, `proj(a, onto)`, `orth(a, onto)`, `std`, `mean`, `lowpass(a, sigma)`,
-`highpass(a, sigma)`, `lerp`, and `clamp`, `where`, `sqrt`, `exp`, `tanh`, `sign`, `torch`, `math`. A formula may
-import torch or numpy modules (`import torch.nn.functional as F`) and nothing else.
+`highpass(a, sigma)`, `lerp`, and `clamp`, `where`, `sqrt`, `exp`, `tanh`, `sign`. The maths libraries are there
+without importing anything: `torch`, `F` (torch.nn.functional), `torch.fft`, `torch.linalg` and `math`.
 
 ```
 u + w * (c - u)                                     plain CFG
@@ -137,8 +137,35 @@ u + (1 + (w - 1) * t_raw) * (c - u)                 fades with the unshifted tim
 from_x0(to_x0(u) + w * (to_x0(c) - to_x0(u)))       plain CFG on the denoised image, whatever the node's space
 ```
 
-A syntax error shows on the node when the graph is queued; a runtime error names the formula. Anima's latents
-arrive as (batch, 16, height, width). `formulas/pentachoron.txt` is a longer example (paste it whole, space noise):
+A syntax error shows on the node when the graph is queued; a runtime error names the formula.
+
+**Formulas are checked.** A formula travels inside the workflow file, so a workflow shared by someone else could
+carry a formula written to harm the machine that runs it. By default a formula is therefore read as a small maths
+language rather than as Python:
+
+| Allowed | Refused |
+|---|---|
+| arithmetic, comparisons, `a if cond else b`, assignments to plain names, `assert`, `if`, list and generator comprehensions, `print` | `import`, `def`, `lambda`, `class`, `for` and `while` loops, `with`, `try`, `del`, f-strings, assigning into a tensor or an attribute |
+| the variables and helpers above; `abs`, `min`, `max`, `sum`, `len`, `range`, `round`, `float`, `int`, `bool`, `tuple`, `list`, `zip`, `enumerate`, `any`, `all`, `isinstance`, `pow` | every other built-in (`open`, `eval`, `getattr`, `type` ...) and any name or attribute starting with `_` |
+| tensor maths methods and properties: `c.mean(dim=1)`, `c.shape`, `c.abs().amax()`, `c.to(torch.float64)`, the `.values` of `max` and `sort` | in-place methods (ending in `_`), `.numpy()`, storage, hooks, `.backward()`, `.type()` |
+| the maths functions of `torch`, `F`, `torch.fft`, `torch.linalg` and `math` | torch's file, network, compiler and system parts (`torch.save`, `torch.load`, `torch.hub`, `torch.ops` ...) |
+
+To change part of a tensor, build a new one with `where(mask, a, b)`. A refused formula says what it met and on
+which line.
+
+**Full Python, on your own machine only.** To run formulas as Python instead (imports of torch and numpy modules,
+all of torch), set the environment variable `CFG_MEGAPACK_FORMULA_PYTHON=1` before starting ComfyUI:
+
+| System | How |
+|---|---|
+| Windows | the line `set CFG_MEGAPACK_FORMULA_PYTHON=1` before ComfyUI starts (in the .bat file that starts it, or in the same console) |
+| Linux, macOS | `CFG_MEGAPACK_FORMULA_PYTHON=1 python main.py` |
+
+It is off unless you set it, and ComfyUI reads it when a formula compiles, so a running ComfyUI needs a restart
+to pick it up. With it on, every workflow you queue runs its formulas as Python on your machine, and a formula can
+then reach anything Python can: queue only workflows you trust. The console notes it once, at the first formula.
+
+Anima's latents arrive as (batch, 16, height, width). `formulas/pentachoron.txt` is a longer example (paste it whole, space noise):
 the aleph weighting on the 5 vertices of a regular pentachoron in every group of 4 channels; `k` sets how firmly
 large pushes are limited (1e6 = plain CFG).
 
