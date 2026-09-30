@@ -4,13 +4,11 @@
 Small and fast on purpose: 128x128 (Anima 256x256), 6 steps. Checks:
   * all CFG Megapack nodes are registered (and ComfyUI-Manager answered at startup, read from the log)
   * every node runs and produces a finite, non-blank image
-  * neutral settings reproduce the plain sampler's image (standard rule, formula u + w (c - u), a full-white
-    region mask with outside 0, bands at 1/1, a clear-plan node after APG, the guider's negative_as_null)
+  * neutral settings reproduce the plain sampler's image (the standard rule on the denoised image and in the noise
+    and velocity spaces, a full-white region mask with outside 0, bands at 1/1, a clear-plan node after APG, the
+    guider's negative_as_null, the pentachoron at k = 1e6)
   * the probe writes its per-step file; the readout returns the plan text
-  * Anima: the formula sees flow = True and the shift of the ModelSamplingAuraFlow node; the weak branch runs SEG on
-    the DiT and refuses PAG with its message
-  * formulas are checked: an import is refused on the node and a torch.save while sampling, both naming the opt-in;
-    with --formula-python (a server started with CFG_MEGAPACK_FORMULA_PYTHON=1) an imported module runs instead
+  * Anima: the weak branch runs SEG on the DiT and refuses PAG with its message
 Usage (ComfyUI already running):  python tools/smoke_test.py --port 8189 [--model anima]
 Writes logs/smoke_results.json (smoke_results_anima.json; *_only.json for an --only run) and prints a table."""
 import argparse
@@ -32,8 +30,8 @@ sys.path.insert(0, ROOT)
 from cfg_megapack import papers as _papers  # noqa: E402  (the paper node ids; imports without ComfyUI)
 
 NODE_IDS = ["CFGP_When", "CFGP_WeakPerturbed", "CFGP_MixScale", "CFGP_MixDirection", "CFGP_MixPentachoron",
-            "CFGP_MixFormula", "CFGP_WhereBands", "CFGP_WhereRegion", "CFGP_Correct", "CFGP_GovernAngle", "CFGP_Probe",
-            "CFGP_Readout", "CFGP_Clear", "CFGP_ThreeWayGuider"] + [f"CFGP_{p.key}" for p in _papers.PAPERS]
+            "CFGP_WhereBands", "CFGP_WhereRegion", "CFGP_Correct", "CFGP_GovernAngle", "CFGP_Probe", "CFGP_Readout",
+            "CFGP_Clear", "CFGP_ThreeWayGuider"] + [f"CFGP_{p.key}" for p in _papers.PAPERS]
 
 
 def _find_comfy():
@@ -57,8 +55,6 @@ ap.add_argument("--vae", default="qwen_image_vae.safetensors")
 ap.add_argument("--shift", type=float, default=3.0, help="Anima's timestep shift (ModelSamplingAuraFlow)")
 ap.add_argument("--only", default="", help="comma-separated case names")
 ap.add_argument("--papers", action="store_true", help="run every paper node with its defaults instead of the stage cases")
-ap.add_argument("--formula-python", action="store_true",
-                help="the server was started with CFG_MEGAPACK_FORMULA_PYTHON=1: check that a full-Python formula runs")
 ap.add_argument("--output-dir", default="", help="the server's --output-directory, if it was given one")
 ap.add_argument("--comfy", default="", help="the ComfyUI folder (found by itself when the pack is in custom_nodes)")
 A = ap.parse_args()
@@ -225,10 +221,6 @@ def region_graph(tag, inside, outside, mask_value=1.0):
     return g
 
 
-def formula(text, space="noise (eps)"):
-    return ("CFGP_MixFormula", {"formula": text, "space": space, "scale": -1.0})
-
-
 def pentachoron(k=1.0, space="noise (eps)"):
     return ("CFGP_MixPentachoron", {"k": k, "scale": -1.0, "space": space})
 
@@ -241,9 +233,6 @@ def govern(**kw):
     return ("CFGP_GovernAngle", d)
 
 
-PENTA = open(os.path.join(ROOT, "formulas", "pentachoron.txt"), encoding="utf-8").read()
-assert PENTA.count("k = 1.0 ") == 1
-PENTA_CFG = PENTA.replace("k = 1.0 ", "k = 1e6 ")          # the formula's plain-CFG limit
 CHAIN_OUT = "base scale (the other nodes still apply)"
 PLAIN_OUT = "plain CFG at base scale (the other nodes off)"
 
@@ -255,8 +244,7 @@ CASES = {
     # neutral cases (ComfyUI's first run after a model load rounds differently from later runs; both are repeatable)
     "plain_resident": (chain("plain_resident", [("CFGP_Clear", {})]), None),
     "standard_rule": (chain("standard_rule", [mix_scale("standard")]), "plain_resident"),
-    "formula_cfg_eps": (chain("formula_cfg_eps", [formula("u + w * (c - u)")]), "plain_resident"),
-    "formula_cfg_x0": (chain("formula_cfg_x0", [formula("u + w * (c - u)", "denoised (x0)")]), "plain_resident"),
+    "standard_eps": (chain("standard_eps", [mix_scale("standard", space="noise (eps)")]), "plain_resident"),
     "bands_neutral": (chain("bands_neutral", [bands()]), "plain_resident"),
     "region_full_mask": (region_graph("region_full_mask", 1.0, 0.0), "plain_resident"),
     "clear_after_apg": (chain("clear_after_apg", [mix_dir("apg"), ("CFGP_Clear", {})]), "plain_resident"),
@@ -269,7 +257,6 @@ CASES = {
     "tangential_damping": (chain("tangential_damping", [mix_dir("tangential_damping")]), None),
     "angle_limit": (chain("angle_limit", [mix_dir("angle_limit")]), None),
     "mahiro": (chain("mahiro", [mix_dir("mahiro")]), None),
-    "formula_orth_boost": (chain("formula_orth_boost", [formula("u + w * orth(c - u, c) + proj(c - u, c)", "denoised (x0)")]), None),
     "when_linear_up_window": (chain("when_linear_up_window", [when(shape="linear_up", start_percent=0.1, end_percent=0.8)]), None),
     "when_tv_cfg": (chain("when_tv_cfg", [when(shape="tv_cfg")]), None),
     "weak_pag_add": (chain("weak_pag_add", [weak()]), None),
@@ -298,8 +285,6 @@ CASES = {
     "when_window_plain_outside": (chain("when_window_plain_outside", [
         when(shape="cosine_down", start_percent=0.0, end_percent=0.3, outside=PLAIN_OUT),
         mix_dir("angle_limit", max_angle_degrees=13.0), bands(high_multiplier=4.0)]), None),
-    "formula_pentachoron": (chain("formula_pentachoron", [formula(PENTA)]), None),
-    "formula_pentachoron_cfg_limit": (chain("formula_pentachoron_cfg_limit", [formula(PENTA_CFG)]), "plain_resident"),
     "pentachoron": (chain("pentachoron", [pentachoron()]), None),
     "pentachoron_cfg_limit": (chain("pentachoron_cfg_limit", [pentachoron(k=1e6)]), "plain_resident"),
     "full_stack_probe": (with_readout(chain("full_stack_probe", [
@@ -307,52 +292,31 @@ CASES = {
         bands(high_multiplier=1.2), correct("rescale_std", strength=0.5), govern(max_angle_degrees=30.0),
         ("CFGP_Probe", {"filename_prefix": "smoke", "print_every": 0})]), "p6"), None),
 }
-# formulas travel inside workflow files: a server started without the full-Python opt-in refuses an import on the
-# node (before sampling) and a file write while sampling, both naming the opt-in. A server started with it
-# (--formula-python) runs an imported module instead, and gives plain CFG back.
-if A.formula_python:
-    SAFETY = {"formula_python_import": (chain("formula_python_import", [formula(
-        "import torch.nn.functional as F\nresult = u + w * (c - u) + 0 * F.relu(c)", "denoised (x0)")]),
-        "plain_resident")}
-    SAFETY_ERROR = {}
-else:
-    SAFETY = {
-        "formula_import_refused": (chain("formula_import_refused", [formula("import os\nresult = c")]), None),
-        "formula_save_refused": (chain("formula_save_refused", [formula(
-            "torch.save(c, 'cfg_smoke_refused.pt')\nresult = c")]), None),
-    }
-    SAFETY_ERROR = {n: "CFG_MEGAPACK_FORMULA_PYTHON" for n in SAFETY}
-CASES.update(SAFETY)
-EXPECT_ERROR = dict(SAFETY_ERROR)          # name -> a phrase the refusal must contain
+EXPECT_ERROR = {}          # name -> a phrase the refusal must contain
 # Neutral cases that convert to the noise or velocity space: the pack computes them in float64, plain CFG in float32,
 # so each step differs by float rounding. SDXL shows none of it; Anima (flow, sigma near 1) grows it through the run,
 # most in bf16 on a GPU (256 x 256, 6 steps, er_sde: mean 0.05 of 255 on the CPU, 2.6 on the GPU). Such a case
-# passes as ROUNDING when its mean difference stays under 5 levels; formula_cfg_x0 (same arithmetic as plain CFG)
-# must stay SAME, which rules out a fault in the formula path itself.
-ROUNDING_ONLY = {"formula_cfg_eps", "formula_cfg_velocity", "formula_flow_variables", "formula_pentachoron_cfg_limit",
-                 "pentachoron_cfg_limit"}
+# passes as ROUNDING when its mean difference stays under 5 levels; standard_rule (the denoised image, the same
+# arithmetic as plain CFG) must stay SAME, which rules out a fault in the rule path itself.
+ROUNDING_ONLY = {"standard_eps", "standard_velocity", "pentachoron_cfg_limit"}
 
 if ANIMA:
-    # the neutral set on 16-channel single-frame latents and the flow conversions, the flow variables inside ComfyUI,
-    # SEG on the DiT (PAG refused with its message), and the variants most used on flow models
-    FLOW_CHECK = (f"assert flow and abs(shift - {A.shift}) < 1e-6 and 0 < t_raw <= 1, (flow, shift, t_raw)\n"
-                  "result = u + w * (c - u)")
-    PICK = ("base", "plain_resident", "standard_rule", "formula_cfg_eps", "formula_cfg_x0", "bands_neutral", "region_full_mask",
-            "guider_reference", "guider_negative_as_null", "govern_neutral", "formula_pentachoron_cfg_limit",
-            "cfg_zero_star", "apg", "angle_limit", "weak_seg", "govern_image_20", "govern_pixel_20",
-            "formula_pentachoron", "pentachoron", "pentachoron_cfg_limit", "when_window_chain_outside", "correct_rescale")
+    # the neutral set on 16-channel single-frame latents and the flow conversions, SEG on the DiT (PAG refused with
+    # its message), and the variants most used on flow models
+    PICK = ("base", "plain_resident", "standard_rule", "standard_eps", "bands_neutral", "region_full_mask",
+            "guider_reference", "guider_negative_as_null", "govern_neutral", "cfg_zero_star", "apg", "angle_limit",
+            "weak_seg", "govern_image_20", "govern_pixel_20", "pentachoron", "pentachoron_cfg_limit",
+            "when_window_chain_outside", "correct_rescale")
     CASES = {**{n: CASES[n] for n in PICK},
-             "formula_flow_variables": (chain("formula_flow_variables", [formula(FLOW_CHECK)]), "plain_resident"),
-             "formula_cfg_velocity": (chain("formula_cfg_velocity", [formula("u + w * (c - u)", "velocity (v)")]),
-                                      "plain_resident"),
+             "standard_velocity": (chain("standard_velocity", [mix_scale("standard", space="velocity (v)")]),
+                                   "plain_resident"),
              "weak_pag_refused": (chain("weak_pag_refused", [weak()]), None),
              "full_stack_probe": (with_readout(chain("full_stack_probe", [
                  when(shape="cosine_down", start_percent=0.0, end_percent=0.9),
                  weak(method="seg (blurred queries)", scale=1.5), mix_dir("apg"), bands(high_multiplier=1.2),
                  correct("rescale_std", strength=0.5), govern(max_angle_degrees=30.0),
-                 ("CFGP_Probe", {"filename_prefix": "smoke", "print_every": 0})]), "p6"), None),
-             **SAFETY}
-    EXPECT_ERROR = {"weak_pag_refused": "Use SEG", **SAFETY_ERROR}
+                 ("CFGP_Probe", {"filename_prefix": "smoke", "print_every": 0})]), "p6"), None)}
+    EXPECT_ERROR = {"weak_pag_refused": "Use SEG"}
 
 
 def paper_case(p):

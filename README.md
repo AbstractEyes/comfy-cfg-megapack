@@ -37,13 +37,6 @@ ComfyUI 0.38.0 with torch 2.11 (CUDA 12.8), on the GPU and CPU-only.
 Optional: on a shared GPU, set `CFG_MEGAPACK_VRAM_FRACTION` (for example `0.6`) before starting ComfyUI to cap its
 share of GPU memory.
 
-**Formulas are checked.** The Your Own Formula node runs what is typed into it, and that text travels inside the
-workflow file. So since 0.1.2 a formula is read as a small maths language (arithmetic, tensor maths, the maths
-functions of torch and math), never as open Python: no imports, no file access, nothing whose name starts with `_`.
-Formulas you write for your own machine can run as full Python if you set `CFG_MEGAPACK_FORMULA_PYTHON=1` before
-starting ComfyUI. It is off by default; with it on, queue only workflows you trust.
-[HOWTO.md](HOWTO.md#3-cfg-mix-your-own-formula) lists what the checked language allows.
-
 ## Quick start
 
 1. Open **Workflow > Browse Templates**, then **Custom Nodes > comfy-cfg-megapack**, or drag a file from
@@ -64,7 +57,7 @@ At every step the model gives a conditional prediction `c` and an unconditional 
 |---|---|---|---|
 | 1 | When | CFG When: Schedule and Window | how the scale changes over the run, and where guidance is on at all |
 | 2 | Weak branch | CFG Weak Branch: Perturbed Self-Attention | an extra pass of the model with some self-attention degraded, to guide away from |
-| 3 | Combine | CFG Mix: Scale Rules, Direction Rules, Pentachoron, Your Own Formula | how `c` and `u` become one prediction |
+| 3 | Combine | CFG Mix: Scale Rules, Direction Rules, Pentachoron | how `c` and `u` become one prediction |
 | 4 | Where | CFG Where: Frequency Bands, Region Mask | how strongly guidance acts on coarse versus fine detail, and inside versus outside a mask |
 | 5 | Correct | CFG Correct: Magnitude | pulls the result's size back toward the conditional prediction (against over-saturation) |
 | 6 | Govern | CFG Govern: Angle Band | holds the angle between the result and its home inside a band: the last word on direction |
@@ -211,7 +204,7 @@ Two stages come from research lines of our own, both published with their code:
 
 The engineering choices are ours too: neutral settings that reproduce plain sampling bit for bit; flow-model support
 that follows the timestep shift (windows in ComfyUI's shift-aware percent, the guidance interval converted to flow
-noise levels, the formula's flow variables); and the noise space kept exact at sigma 1, where a flow schedule starts
+noise levels); and the noise space kept exact at sigma 1, where a flow schedule starts
 and the noise estimate alone carries no picture.
 
 ## Models
@@ -232,22 +225,20 @@ Run these with ComfyUI's own Python (the tools also use Pillow and numpy, which 
 
 | Command (from this folder) | What it checks | Needs |
 |---|---|---|
-| `python tests/test_engine.py` | 53 checks of the guidance maths: neutral settings, library agreement, schedules and windows, bands, regions, corrections, the governor, the guider rules, the probe, plan install and clear, flow models (the shift, the space converters, sigma 1, single-frame latents), the transformer patches, every paper node on eps and flow models, the model-aware defaults, the pentachoron rule (against a written-out reference, and bit for bit against its formula), and the checked formula language (53 escape attempts refused; 15 formulas, every documented one among them, bit-identical to full Python) | CPU |
-| `python tools/smoke_test.py --port 8188` | 48 SDXL cases through ComfyUI's API: every stage node runs, neutral cases match plain sampling, variants change the image, a formula's import and file write are refused | a running ComfyUI (CPU-only works) |
-| `python tools/smoke_test.py --port 8188 --model anima` | 28 Anima cases, including the flow variables read inside ComfyUI and SEG on the transformer | the Anima files |
-| `python tools/smoke_test.py --port 8188 --formula-python --only formula_python_import` | a formula that imports a module runs, and gives plain CFG back | a ComfyUI started with `CFG_MEGAPACK_FORMULA_PYTHON=1` |
+| `python tests/test_engine.py` | 44 checks of the guidance maths: neutral settings, library agreement, schedules and windows, bands, regions, corrections, the governor, the guider rules, the probe, plan install and clear, flow models (the space converters, sigma 1, single-frame latents), the transformer patches, every paper node on eps and flow models, the model-aware defaults, the pentachoron rule (against a written-out reference; its plain-CFG limit in every space) | CPU |
+| `python tools/smoke_test.py --port 8188` | 42 SDXL cases through ComfyUI's API: every stage node runs, neutral cases match plain sampling, variants change the image | a running ComfyUI (CPU-only works) |
+| `python tools/smoke_test.py --port 8188 --model anima` | 22 Anima cases, including the noise and velocity spaces and SEG on the transformer | the Anima files |
 | `python tools/smoke_test.py --port 8188 --papers` (add `--model anima` for Anima) | every paper node with its defaults | a running ComfyUI |
 | `python tools/determinism_check.py --port 8188` | ComfyUI's own run-to-run repeatability and the neutral equalities | a running ComfyUI |
 | `python tools/showcase.py --port 8188 --model sdxl` | renders the comparison images in docs/images | the models |
 
 Measured on an RTX 4090 and on the CPU: the neutral settings reproduce plain sampling pixel for pixel on SDXL and
-on Anima (the standard rule, bands and region factors of 1, the governor band [0, 180], the guider's
-negative_as_null, a formula on the denoised image). A formula in the noise or velocity space is computed in float64
-while plain CFG runs in float32, so each step differs by float rounding: invisible on SDXL; on Anima (256 x 256,
+on Anima (the standard rule on the denoised image, bands and region factors of 1, the governor band [0, 180],
+the guider's negative_as_null). A rule computed in the noise or velocity space runs in float64 while plain CFG runs
+in float32, so each step differs by float rounding: invisible on SDXL; on Anima (256 x 256,
 6 steps, er_sde) the rounding grows through the run to a mean of 0.05 levels of 255 on the CPU and 2.6 on the GPU,
 where the model runs in bf16 (max 124). All 50 paper nodes run with their defaults on both models, except PAG on
-Anima, which stops with a message that points to SEG or attention skip. The checked formula language changed no
-image: every formula case renders pixel for pixel as it did with the earlier Python evaluator, on both models. ComfyUI's first
+Anima, which stops with a message that points to SEG or attention skip. ComfyUI's first
 sampling after a model load rounds slightly differently from later ones; for pixel-exact A/B pairs, queue once with
 another seed first.
 
@@ -258,6 +249,14 @@ another seed first.
   ReCFG, CFG-Cache, the attention-level negatives (NAG, NASA, VSF, NegToMe), and block skipping on Anima.
 - **Wave 3**, planned: sampler nodes for CFG++, Rectified-CFG++, CFG-MP, predictor-corrector guidance, restart
   sampling, momentum, spherical guidance, particle guidance and Z-sampling.
+
+## The experimental branch
+
+The `experimental` branch adds **CFG Mix: Your Own Formula**, a node that takes the guided prediction as typed maths
+(a small checked language by default; full Python only by an opt-in on your own machine). It stays off this branch
+and off the Comfy Registry because it evaluates text that travels inside workflow files. To try it, clone that
+branch into `ComfyUI/custom_nodes` in place of this one:
+`git clone -b experimental https://github.com/AbstractEyes/comfy-cfg-megapack`.
 
 ## Credits and citation
 

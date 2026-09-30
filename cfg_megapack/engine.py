@@ -6,7 +6,7 @@ compose here, in a fixed order, instead of by stacking hooks that overwrite each
 
     1 when     schedule the guidance scale over the run and gate it to a window of the run
     2 weak     an extra pass of the model with its self-attention perturbed (PAG, SEG, temperature)
-    3 mix      how the conditional and unconditional predictions combine (one rule, or a typed formula)
+    3 mix      how the conditional and unconditional predictions combine (one rule)
     4 where    reshape the guidance term by frequency band, then by region
     5 correct  magnitude corrections, applied in the order the nodes were chained
     6 govern   the angle band: a projection that holds the angle between x0_hat and its home inside [min, max]
@@ -23,10 +23,8 @@ without a ComfyUI install.
 """
 from __future__ import annotations
 
-import ast
 import copy
 import json
-import logging
 import math
 import os
 import time
@@ -119,16 +117,6 @@ def foreign_cfg_hooks(model_options) -> bool:
 def is_flow_sampling(model_sampling) -> bool:
     """True for ComfyUI's CONST (rectified-flow) model sampling and its subclasses."""
     return model_sampling is not None and any(c.__name__ == "CONST" for c in type(model_sampling).__mro__)
-
-
-def flow_shift(model_sampling) -> float:
-    """The timestep shift s of a flow model's noise curve sigma = s t / (1 + (s - 1) t): the model's shift on SD3,
-    AuraFlow and Anima sampling (ModelSamplingSD3 / ModelSamplingAuraFlow), exp(mu) on Flux-type sampling (its
-    exp(mu) / (exp(mu) + 1/t - 1) is the same curve)."""
-    s = float(getattr(model_sampling, "shift", 1.0) or 1.0)
-    if any(c.__name__ == "ModelSamplingFlux" for c in type(model_sampling).__mro__):
-        return math.exp(s)
-    return s
 
 
 def _bview(v: torch.Tensor, ref: torch.Tensor) -> torch.Tensor:
@@ -495,335 +483,10 @@ def three_way(rule: str, c: torch.Tensor, u: torch.Tensor, n: torch.Tensor, w: f
     raise ValueError(f"unknown three-way rule {rule!r}")
 
 
-# The formula sandbox --------------------------------------------------------
+# Per-sample shapes ------------------------------------------------------------
 
 def _per_sample(v: torch.Tensor, ref: torch.Tensor) -> torch.Tensor:
     return v.reshape(v.shape[0], *([1] * (ref.ndim - 1)))
-
-
-def _f_dot(a, b):
-    return _per_sample((a * b).flatten(1).sum(1), a)
-
-
-def _f_norm(a):
-    return _per_sample(a.flatten(1).norm(dim=1), a)
-
-
-def _f_cos(a, b):
-    return _f_dot(a, b) / (_f_norm(a) * _f_norm(b)).clamp_min(_EPS)
-
-
-def _f_proj(a, onto):
-    return _f_dot(a, onto) / _f_dot(onto, onto).clamp_min(_EPS) * onto
-
-
-def _f_orth(a, onto):
-    return a - _f_proj(a, onto)
-
-
-def _f_std(a):
-    return _per_sample(a.flatten(1).std(dim=1), a)
-
-
-def _f_mean(a):
-    return _per_sample(a.flatten(1).mean(dim=1), a)
-
-
-def _f_lowpass(a, sigma=2.0):
-    return cv.gaussian_blur2d(a, sigma=float(sigma)) if a.ndim == 4 else a
-
-
-def _f_highpass(a, sigma=2.0):
-    return a - _f_lowpass(a, sigma)
-
-
-def _f_lerp(a, b, t):
-    return a + (b - a) * t
-
-
-FORMULA_HELPERS = {
-    "dot": _f_dot, "norm": _f_norm, "cos": _f_cos, "proj": _f_proj, "orth": _f_orth, "std": _f_std,
-    "mean": _f_mean, "lowpass": _f_lowpass, "highpass": _f_highpass, "lerp": _f_lerp,
-    "clamp": torch.clamp, "where": torch.where, "sqrt": torch.sqrt, "exp": torch.exp, "tanh": torch.tanh,
-    "sign": torch.sign, "torch": torch, "F": F, "math": math, "pi": math.pi,
-}
-_IMPORTABLE = ("torch", "numpy")
-
-
-def _formula_import(name, globals=None, locals=None, fromlist=(), level=0):
-    """torch's C code imports some of its own modules lazily on first use (torch.storage, the first time a tensor is
-    built from a list) through the calling frame's builtins, so a formula frame may import torch and numpy (and a
-    formula may write `import torch.nn.functional as F`); anything else is refused."""
-    if level == 0 and name.split(".")[0] in _IMPORTABLE:
-        return __import__(name, globals, locals, fromlist, level)
-    raise ImportError(f"formulas can import torch and numpy only, not {name!r}")
-
-
-_SAFE_BUILTINS = {"abs": abs, "min": min, "max": max, "float": float, "int": int, "round": round, "len": len,
-                  "range": range, "sum": sum, "pow": pow, "bool": bool, "tuple": tuple, "list": list, "zip": zip,
-                  "enumerate": enumerate, "any": any, "all": all, "isinstance": isinstance, "print": print,
-                  "True": True, "False": False, "None": None, "__import__": _formula_import}
-FORMULA_VARIABLES = ("c", "u", "w", "x", "sigma", "t", "p", "step", "steps", "weak", "flow", "shift", "t_raw", "a_t",
-                     "s_t", "space", "to_x0", "to_eps", "to_v", "from_x0", "from_eps", "from_v")
-
-
-def formula_flow_env(space: str, xs: torch.Tensor, sigv: torch.Tensor, flow: bool, sigma: float, shift: float,
-                     t_raw: float) -> Dict[str, Any]:
-    """The noise-schedule variables and space converters every formula gets.
-      flow                   True for flow-matching models (Anima, SD3, Flux type): x = (1 - sigma) x0 + sigma n
-      shift                  the model's timestep shift (1 on eps models); sigma = shift t / (1 + (shift - 1) t)
-                             (exp(mu) on Flux-type sampling, the same curve)
-      t_raw                  the unshifted flow time t (equal to the noise level t on eps models)
-      a_t, s_t               x = a_t x0 + s_t n: (1 - sigma, sigma) on flow models, (1, sigma) on eps models
-      space                  the formula's own space: 'x0', 'eps' or 'v'
-      to_x0, to_eps, to_v    convert a prediction from the formula's space (c, u, weak or your own) to another;
-                             on flow models 'eps' is the noise n and 'v' the velocity n - x0
-      from_x0, from_eps, from_v   the way back: a prediction in that space -> the formula's space"""
-    def conv(src, dst):
-        return lambda d: to_space(from_space(d, xs, sigv, src, flow), xs, sigv, dst, flow)
-    return {"flow": bool(flow), "shift": float(shift), "t_raw": float(t_raw),
-            "a_t": (1.0 - float(sigma)) if flow else 1.0, "s_t": float(sigma), "space": space,
-            "to_x0": conv(space, "x0"), "to_eps": conv(space, "eps"), "to_v": conv(space, "v"),
-            "from_x0": conv("x0", space), "from_eps": conv("eps", space), "from_v": conv("v", space)}
-
-
-# -- formula safety --------------------------------------------------------------------------------------------
-# A formula travels inside the workflow file, so a shared workflow must not be able to run code on the machine that
-# queues it. By default a formula runs as a checked maths language: the parse tree is checked against the constructs
-# below, every attribute read goes through _formula_getattr (tensors, the allowed namespaces and torch's result
-# tuples only), and nothing starting with '_' can be named. Full Python, the older and wider form (restricted
-# builtins, the whole torch module, imports of torch and numpy), runs only when the person starting ComfyUI opts in
-# with CFG_MEGAPACK_FORMULA_PYTHON=1; it is off by default.
-
-FORMULA_PYTHON_ENV = "CFG_MEGAPACK_FORMULA_PYTHON"
-_FORMULA_PYTHON_HINT = (f"Formulas are checked because they travel inside workflow files. To run formulas as full "
-                        f"Python on your own machine, set {FORMULA_PYTHON_ENV}=1 before starting ComfyUI (only for "
-                        f"workflows you trust).")
-_log = logging.getLogger(__name__)
-_python_mode_logged = False
-
-
-def formula_python_enabled() -> bool:
-    """True when the person starting ComfyUI opted in to full-Python formulas (1 / true / yes / on)."""
-    return os.environ.get(FORMULA_PYTHON_ENV, "").strip().lower() in ("1", "true", "yes", "on")
-
-
-class _Allowed:
-    """A read-only namespace a checked formula may use (its torch, F, math ...): attribute reads reach only _items."""
-
-    def __init__(self, name: str, items: Dict[str, Any]):
-        self._name, self._items = name, dict(items)
-
-    def __repr__(self):
-        return f"<formula namespace {self._name}>"
-
-
-def _pick(module, names) -> Dict[str, Any]:
-    return {n: getattr(module, n) for n in names if hasattr(module, n)}
-
-
-_TORCH_ALLOWED = (
-    "Tensor", "tensor", "as_tensor", "zeros", "ones", "full", "zeros_like", "ones_like", "full_like", "arange",
-    "linspace", "logspace", "eye", "rand_like", "randn_like",
-    "abs", "sign", "sgn", "neg", "exp", "exp2", "expm1", "log", "log2", "log10", "log1p", "sqrt", "rsqrt", "square",
-    "pow", "reciprocal", "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh", "asinh",
-    "acosh", "atanh", "sigmoid", "erf", "erfc", "erfinv", "floor", "ceil", "round", "trunc", "frac", "fmod",
-    "remainder", "clamp", "clip", "clamp_min", "clamp_max", "maximum", "minimum", "fmax", "fmin", "lerp", "hypot",
-    "where", "isfinite", "isnan", "isinf", "nan_to_num", "logical_and", "logical_or", "logical_not", "logical_xor",
-    "copysign", "deg2rad", "rad2deg", "angle", "real", "imag", "conj", "polar", "complex", "view_as_real",
-    "view_as_complex", "sum", "mean", "std", "var", "std_mean", "var_mean", "prod", "amax", "amin", "max", "min",
-    "argmax", "argmin", "norm", "logsumexp", "cumsum", "cumprod", "median", "quantile", "nanmean", "nansum", "all",
-    "any", "count_nonzero", "sort", "argsort", "topk", "reshape", "flatten", "unflatten", "squeeze", "unsqueeze",
-    "permute", "transpose", "movedim", "stack", "cat", "concat", "chunk", "split", "unbind", "narrow", "gather",
-    "index_select", "flip", "roll", "rot90", "broadcast_to", "broadcast_tensors", "meshgrid", "tile",
-    "repeat_interleave", "diag", "diagonal", "tril", "triu", "outer", "matmul", "mm", "bmm", "einsum", "tensordot",
-    "cross", "dot", "kron", "cdist", "softmax", "log_softmax", "diff", "cosine_similarity",
-    "float16", "float32", "float64", "bfloat16", "complex64", "complex128", "int32", "int64", "bool",
-    "pi", "e", "inf", "nan")
-_FFT_ALLOWED = ("fft", "ifft", "fft2", "ifft2", "fftn", "ifftn", "rfft", "irfft", "rfft2", "irfft2", "rfftn",
-                "irfftn", "fftshift", "ifftshift", "fftfreq", "rfftfreq")
-_LINALG_ALLOWED = ("norm", "vector_norm", "matrix_norm", "svd", "svdvals", "eigh", "eigvalsh", "qr", "inv", "pinv",
-                   "solve", "det", "slogdet", "cross", "matmul", "diagonal", "cholesky")
-_F_ALLOWED = ("interpolate", "avg_pool1d", "avg_pool2d", "max_pool2d", "adaptive_avg_pool2d", "adaptive_max_pool2d",
-              "conv1d", "conv2d", "conv_transpose2d", "pad", "normalize", "softmax", "log_softmax", "gelu", "relu",
-              "leaky_relu", "silu", "softplus", "elu", "hardtanh", "mish", "softsign", "tanhshrink",
-              "cosine_similarity", "pairwise_distance", "unfold", "fold", "pixel_shuffle", "pixel_unshuffle",
-              "grid_sample", "affine_grid", "one_hot")
-_MATH_ALLOWED = ("sqrt", "exp", "expm1", "log", "log1p", "log2", "log10", "pow", "sin", "cos", "tan", "asin", "acos",
-                 "atan", "atan2", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "hypot", "degrees", "radians",
-                 "floor", "ceil", "trunc", "fabs", "copysign", "fmod", "isfinite", "isnan", "isinf", "isclose",
-                 "erf", "erfc", "fsum", "dist", "pi", "e", "tau", "inf", "nan")
-# Tensor methods and properties a checked formula may read: maths, shapes, dtypes and conversions. In-place methods
-# (trailing '_'), numpy(), storage, hooks and the autograd graph are not on the list.
-_TENSOR_ALLOWED = frozenset((
-    "shape", "ndim", "dtype", "device", "T", "mT", "real", "imag", "is_complex", "is_floating_point",
-    "abs", "sign", "sgn", "neg", "exp", "expm1", "log", "log1p", "log2", "sqrt", "rsqrt", "square", "pow",
-    "reciprocal", "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh", "asinh", "acosh",
-    "atanh", "sigmoid", "erf", "floor", "ceil", "round", "trunc", "frac", "fmod", "remainder", "clamp", "clip",
-    "clamp_min", "clamp_max", "maximum", "minimum", "lerp", "hypot", "where", "isfinite", "isnan", "isinf",
-    "nan_to_num", "logical_and", "logical_or", "logical_not", "eq", "ne", "lt", "le", "gt", "ge", "add", "sub", "mul",
-    "div", "matmul", "mm", "bmm", "dot", "outer", "sum", "mean", "std", "var", "prod", "amax", "amin", "max", "min",
-    "argmax", "argmin", "norm", "logsumexp", "cumsum", "cumprod", "median", "quantile", "all", "any", "sort",
-    "argsort", "topk", "softmax", "log_softmax", "reshape", "view", "view_as", "reshape_as", "flatten", "unflatten",
-    "squeeze", "unsqueeze", "permute", "transpose", "t", "movedim", "expand", "expand_as", "repeat",
-    "repeat_interleave", "tile", "chunk", "split", "unbind", "narrow", "gather", "index_select", "flip", "roll",
-    "diag", "diagonal", "tril", "triu", "diff", "to", "float", "double", "half", "bfloat16", "type_as", "contiguous",
-    "clone", "detach", "size", "dim", "numel", "item", "tolist", "masked_fill", "new_zeros", "new_ones", "new_full",
-    "new_tensor", "angle", "conj"))
-_SIZE_ALLOWED = frozenset(("numel", "count", "index"))
-
-_F_NS = _Allowed("F", _pick(F, _F_ALLOWED))
-_TORCH_NS = _Allowed("torch", {**_pick(torch, _TORCH_ALLOWED),
-                               "fft": _Allowed("torch.fft", _pick(torch.fft, _FFT_ALLOWED)),
-                               "linalg": _Allowed("torch.linalg", _pick(torch.linalg, _LINALG_ALLOWED)),
-                               "nn": _Allowed("torch.nn", {"functional": _F_NS})})
-_MATH_NS = _Allowed("math", _pick(math, _MATH_ALLOWED))
-_CHECKED_HELPERS = {**FORMULA_HELPERS, "torch": _TORCH_NS, "math": _MATH_NS, "F": _F_NS}
-
-
-def _formula_getattr(obj, name: str):
-    """Every attribute read in a checked formula comes here: the allowed namespaces, a tensor's allowed methods and
-    properties, a shape's numel / count / index, and the fields of torch's result tuples (values, indices ...)."""
-    if isinstance(obj, _Allowed):
-        if name in obj._items:
-            return obj._items[name]
-        raise AttributeError(f"'{obj._name}.{name}' is not available to formulas (the list is in HOWTO.md, Your Own "
-                             f"Formula). {_FORMULA_PYTHON_HINT}")
-    if isinstance(obj, torch.Tensor):
-        if name in _TENSOR_ALLOWED:
-            return getattr(obj, name)
-    elif isinstance(obj, torch.Size):
-        if name in _SIZE_ALLOWED:
-            return getattr(obj, name)
-    elif type(obj).__module__ == "torch.return_types":
-        return getattr(obj, name)
-    raise AttributeError(f"formulas may not read '.{name}' from a {type(obj).__name__}. {_FORMULA_PYTHON_HINT}")
-
-
-_CHECKED_NODES = (ast.Module, ast.Expression, ast.Expr, ast.Assign, ast.AugAssign, ast.Assert, ast.If, ast.Pass,
-                  ast.Name, ast.Load, ast.Store, ast.Constant, ast.BinOp, ast.UnaryOp, ast.BoolOp, ast.Compare,
-                  ast.IfExp, ast.Call, ast.keyword, ast.Starred, ast.Attribute, ast.Subscript, ast.Slice, ast.Tuple,
-                  ast.List, ast.Dict, ast.ListComp, ast.GeneratorExp, ast.comprehension, ast.operator, ast.unaryop,
-                  ast.boolop, ast.cmpop)
-_CONSTRUCT_NAMES = {ast.Import: "import", ast.ImportFrom: "import", ast.Lambda: "lambda", ast.FunctionDef: "def",
-                    ast.AsyncFunctionDef: "def", ast.ClassDef: "class", ast.For: "for", ast.AsyncFor: "for",
-                    ast.While: "while", ast.With: "with", ast.AsyncWith: "with", ast.Try: "try", ast.Raise: "raise",
-                    ast.Delete: "del", ast.Global: "global", ast.Nonlocal: "nonlocal", ast.JoinedStr: "an f-string",
-                    ast.NamedExpr: "':='", ast.Yield: "yield", ast.YieldFrom: "yield", ast.Await: "await",
-                    ast.Return: "return", ast.Break: "break", ast.Continue: "continue", ast.SetComp: "a set",
-                    ast.DictComp: "a dict comprehension", ast.Set: "a set"}
-
-
-def _check_formula(tree: ast.AST) -> None:
-    """Refuse every construct outside the checked language, naming the first one found and its line."""
-    def refuse(node, what):
-        line = getattr(node, "lineno", None)
-        where = f" (line {line})" if line else ""
-        raise ValueError(f"formula{where}: {what} is not allowed in a formula. {_FORMULA_PYTHON_HINT}")
-
-    def names_only(target, node):
-        if isinstance(target, ast.Name):
-            return
-        if isinstance(target, (ast.Tuple, ast.List)):
-            for t in target.elts:
-                names_only(t, node)
-            return
-        refuse(node, "assigning to anything but plain names (use where(...) to change part of a tensor)")
-
-    for node in ast.walk(tree):
-        if type(node) in _CONSTRUCT_NAMES:
-            refuse(node, _CONSTRUCT_NAMES[type(node)])
-        if not isinstance(node, _CHECKED_NODES):
-            refuse(node, type(node).__name__)
-        if isinstance(node, ast.Name) and node.id.startswith("_"):
-            refuse(node, f"the name '{node.id}' (names starting with '_')")
-        elif isinstance(node, ast.Attribute):
-            if node.attr.startswith("_"):
-                refuse(node, f"the attribute '.{node.attr}' (attributes starting with '_')")
-            if not isinstance(node.ctx, ast.Load):
-                refuse(node, "setting an attribute")
-        elif isinstance(node, ast.Subscript) and not isinstance(node.ctx, ast.Load):
-            refuse(node, "assigning into a tensor (use where(...) to change part of a tensor)")
-        elif isinstance(node, ast.Starred) and not isinstance(node.ctx, ast.Load):
-            refuse(node, "a starred assignment")
-        elif isinstance(node, ast.Assign):
-            for t in node.targets:
-                names_only(t, node)
-        elif isinstance(node, ast.AugAssign):
-            names_only(node.target, node)
-        elif isinstance(node, ast.comprehension):
-            names_only(node.target, node)
-            if node.is_async:
-                refuse(node, "async")
-        elif isinstance(node, ast.Constant) and isinstance(node.value, bytes):
-            refuse(node, "a bytes literal")
-
-
-class _GuardAttributes(ast.NodeTransformer):
-    """a.b -> _formula_getattr(a, 'b') on every attribute read of a checked formula."""
-
-    def visit_Attribute(self, node):
-        self.generic_visit(node)
-        call = ast.Call(func=ast.Name(id="_formula_getattr", ctx=ast.Load()),
-                        args=[node.value, ast.Constant(value=node.attr)], keywords=[])
-        return ast.copy_location(call, node)
-
-
-def compile_formula(text: str):
-    """Compile a formula once. A single expression is evaluated; statements must assign `result`.
-    Returns (kind, code, checked): checked formulas run in the maths language, the rest as full Python
-    (only when the opt-in is set)."""
-    src = (text or "").strip()
-    if not src:
-        raise ValueError("the formula is empty")
-    if formula_python_enabled():
-        global _python_mode_logged
-        if not _python_mode_logged:
-            _log.warning("[CFG Megapack] %s=1: formulas run as full Python; queue only workflows you trust.",
-                         FORMULA_PYTHON_ENV)
-            _python_mode_logged = True
-        try:
-            return ("eval", compile(src, "<cfg formula>", "eval"), False)
-        except SyntaxError:
-            pass
-        try:
-            return ("exec", compile(src, "<cfg formula>", "exec"), False)
-        except SyntaxError as e:
-            raise ValueError(f"formula syntax error at line {e.lineno}: {e.msg}") from None
-    for kind in ("eval", "exec"):
-        try:
-            tree = ast.parse(src, "<cfg formula>", kind)
-        except SyntaxError as e:
-            if kind == "eval":
-                continue
-            raise ValueError(f"formula syntax error at line {e.lineno}: {e.msg}") from None
-        _check_formula(tree)
-        tree = ast.fix_missing_locations(_GuardAttributes().visit(tree))
-        return (kind, compile(tree, "<cfg formula>", kind), True)
-
-
-def eval_formula(compiled, env: Dict[str, Any], text: str = "") -> torch.Tensor:
-    kind, code, checked = compiled if len(compiled) == 3 else (*compiled, False)
-    ns = dict(_CHECKED_HELPERS if checked else FORMULA_HELPERS)
-    ns.update(env)
-    if checked:
-        ns["_formula_getattr"] = _formula_getattr
-    ns["__builtins__"] = _SAFE_BUILTINS
-    try:
-        if kind == "eval":
-            out = eval(code, ns)  # noqa: S307 (checked formula, or full Python by the user's own opt-in)
-        else:
-            exec(code, ns)  # noqa: S102
-            if "result" not in ns:
-                raise ValueError("a multi-line formula must assign `result`")
-            out = ns["result"]
-    except Exception as e:  # surface the user's error with its formula
-        raise ValueError(f"CFG formula failed: {type(e).__name__}: {e}\nformula: {text.strip()}") from None
-    if not torch.is_tensor(out):
-        raise ValueError(f"CFG formula must return a tensor shaped like c, got {type(out).__name__}")
-    if out.shape != env["c"].shape:
-        out = out.expand_as(env["c"])
-    return out
 
 
 # ---------------------------------------------------------------------------
@@ -1119,10 +782,6 @@ class GuidanceRuntime:
         self.prev_sigma: Optional[float] = None
         self.mix_state = None
         self._mix_state_for = None
-        self._formula = None
-        mix = plan.get("mix")
-        if mix and mix.get("kind") == "formula":
-            self._formula = compile_formula(mix["formula"])
         meas = plan.get("measure")
         self.probe = ProbeWriter(meas.get("folder") or probe_folder(), meas.get("prefix", "cfg_probe"),
                                  meas.get("print_every", 0)) if meas else None
@@ -1144,11 +803,10 @@ class GuidanceRuntime:
 
     def may_skip_uncond(self) -> bool:
         """True when some steps never need the unconditional pass (saves one model evaluation there)."""
-        when, weak, mix = self.plan.get("when"), self.plan.get("weak"), self.plan.get("mix")
+        when, weak = self.plan.get("when"), self.plan.get("weak")
         window_skip = bool(when and when.get("outside") == "cond" and when.get("skip_uncond", True)
                            and (when.get("start", 0.0) > 0.0 or when.get("end", 1.0) < 1.0))
-        replace_skip = bool(weak and weak.get("mode") == "replace" and not (mix and mix.get("kind") == "formula")
-                            and not self.plan.get("measure"))
+        replace_skip = bool(weak and weak.get("mode") == "replace" and not self.plan.get("measure"))
         return window_skip or replace_skip
 
     # -- the window --------------------------------------------------------------
@@ -1237,17 +895,13 @@ class GuidanceRuntime:
         else:
             step, n_steps, prog, times = 0.0, 1, 1.0 - noise_level(sig0, flow), None
         t_now = noise_level(sig0, flow)
-        # flow matching: sigma is the shifted time, sigma = s t / (1 + (s - 1) t) (ComfyUI's time_snr_shift); t_raw
-        # undoes the shift. Eps models: shift 1 and t_raw = t.
-        shift = flow_shift(ms) if flow else 1.0
-        t_raw = sig0 / max(shift - (shift - 1.0) * sig0, 1e-12) if flow else t_now
         mix = plan.get("mix") or {}
         w_base = float(cond_scale) if float(mix.get("scale", -1.0)) < 0 else float(mix["scale"])
         s = {"x": x, "xs": xs, "c": c, "u": u, "n": x0_n.float() if x0_n is not None else None, "sig": sig,
              "sig0": sig0, "sigv": _bview(sig.clamp_min(_EPS), xs), "flow": flow, "model": model,
              "model_options": model_options, "input_cond": input_cond, "sigma": sigma, "prog": prog, "step": step,
              "n_steps": n_steps, "t_now": t_now, "three_way_rule": three_way_rule, "neg_scale": neg_scale,
-             "shift": shift, "t_raw": t_raw, "frame": frame, "three_way_knobs": three_way_knobs}
+             "frame": frame, "three_way_knobs": three_way_knobs}
 
         # 1 when: the scheduled scale inside the window (the shape spans the window); outside it, the rest of the
         # chain at the outside scale, or no guidance, or plain CFG ------------------------------------------------
@@ -1345,15 +999,6 @@ class GuidanceRuntime:
                 space = "x0"
             dc, du, dn = (to_space(t_, xs, sigv, space, flow) for t_ in (c, u if u is not None else c, n))
             x0_hat = from_space(three_way(s["three_way_rule"], dc, du, dn, w, s["neg_scale"]), xs, sigv, space, flow)
-        elif mix.get("kind") == "formula":
-            space = mix.get("space", "eps")
-            dc = to_space(c, xs, sigv, space, flow)
-            du = to_space(u, xs, sigv, space, flow) if u is not None else torch.zeros_like(dc)
-            env = {"c": dc, "u": du, "w": w, "x": xs, "sigma": s["sig0"], "t": s["t_now"], "p": s["prog"],
-                   "step": step_i, "steps": s["n_steps"],
-                   "weak": to_space(x0_w, xs, sigv, space, flow) if x0_w is not None else None}
-            env.update(formula_flow_env(space, xs, sigv, flow, s["sig0"], s["shift"], s["t_raw"]))
-            x0_hat = from_space(eval_formula(self._formula, env, mix["formula"]), xs, sigv, space, flow)
         else:
             if u is None:
                 x0_hat = c
@@ -1495,8 +1140,8 @@ class GuidanceRuntime:
 
     def _uncond_unused(self, sigma, model) -> bool:
         plan = self.plan
-        weak, mix = plan.get("weak"), plan.get("mix")
-        if weak and weak.get("mode") == "replace" and not (mix and mix.get("kind") == "formula") and not plan.get("measure"):
+        weak = plan.get("weak")
+        if weak and weak.get("mode") == "replace" and not plan.get("measure"):
             return True
         when = plan.get("when")
         if when and when.get("outside") == "cond" and when.get("skip_uncond", True):
@@ -1538,9 +1183,7 @@ def describe_plan(plan: Optional[Dict[str, Any]]) -> str:
     else:
         lines.append("2 weak: none")
     mix = plan.get("mix")
-    if mix and mix.get("kind") == "formula":
-        lines.append(f"3 mix: your formula in {mix.get('space', 'eps')} space: {mix['formula'].strip()}")
-    elif mix:
+    if mix:
         scale = "sampler cfg" if float(mix.get("scale", -1)) < 0 else mix["scale"]
         name = mix.get("title") or (mix["registry"] if mix.get("kind") == "registry" else mix.get("rule", "standard"))
         lines.append(f"3 mix: {name} ({mix.get('space', 'auto')} space), scale {scale}, "

@@ -24,9 +24,7 @@ fixed to compare settings on the same image (only the changed branch runs again)
 |---|---|---|
 | CFG Megapack - stage chain AB | plain CFG against the whole chain of stage nodes; only the APG mix is on, the other stages are bypassed | select a stage node and press Ctrl+B to switch it on; the Plan Readout shows what is active |
 | CFG Megapack - paper node AB | plain CFG against one paper node (APG) at cfg 14, where high-scale artifacts show | swap the APG node for any other paper node (double-click the canvas, type the paper's name) |
-| CFG Megapack - your formula AB | plain CFG against a formula you type | edit the formula; see [Your Own Formula](#3-cfg-mix-your-own-formula) |
 | CFG Megapack - pentachoron AB | plain CFG against the [Pentachoron](#3-cfg-mix-pentachoron) node | change k: larger is closer to plain CFG (1000000 is plain CFG) |
-| CFG Megapack - pentachoron formula AB | plain CFG against the pentachoron formula | change `k = 1.0` in the first line: larger is closer to plain CFG |
 | CFG Megapack - angle governor AB | plain CFG against the angle governor at 20 degrees, whole image | try 10-30 degrees, or unit = each pixel |
 | CFG Megapack - negative vs null guider AB | ComfyUI's CFG guider against the positive/negative/null guider (Perp-Neg) | uses SamplerCustomAdvanced; the null prompt is the empty text |
 | CFG Megapack - Anima stage chain AB | on Anima: plain CFG against the stage chain with the governor on (20 degrees) | Anima's loaders, shift 3, er_sde / simple, 40 steps, CFG 4.5, 1024 x 1024; the weak branch is preset to SEG |
@@ -140,68 +138,6 @@ channels); Anima's hold four (16 channels). A channel count that does not divide
 ![The pentachoron on Anima](docs/images/anima/Pentachoron.jpg)
 
 <sub>Anima (16 channels, four pentachora), cfg 9, k = 1; node graph: [docs/showcase/anima/Pentachoron.json](docs/showcase/anima/Pentachoron.json)</sub>
-
-### 3 CFG Mix: Your Own Formula
-
-Type the guided prediction as a Python expression, or several lines that assign `result`.
-
-| Variable | Meaning |
-|---|---|
-| `c`, `u` | the conditional and unconditional predictions, in the node's space |
-| `w` | the scale after the When stage |
-| `x` | the latent, `sigma` the noise level the sampler uses, `t` the noise level in [0, 1] (1 = noise) |
-| `p`, `step`, `steps` | progress (0 at the first step, 1 at the last), the step index and count |
-| `weak` | the weak branch's prediction when a weak-branch node is chained, else None |
-| `flow`, `shift`, `t_raw` | flow models: True, the timestep shift s in `sigma = s t / (1 + (s - 1) t)` (Anima 3; Flux-type sampling reports exp(mu), the same curve), the unshifted time. SDXL: False, 1, t |
-| `a_t`, `s_t` | `x = a_t x0 + s_t noise`: (1 - sigma, sigma) on flow models, (1, sigma) on SDXL |
-| `space` | the node's space: 'x0', 'eps' or 'v' |
-| `to_x0(a)`, `to_eps(a)`, `to_v(a)` | convert a prediction from the node's space; on flow models eps is the noise itself and v the velocity `noise - x0` |
-| `from_x0(a)`, `from_eps(a)`, `from_v(a)` | the way back into the node's space |
-
-Helpers (per image): `dot`, `norm`, `cos`, `proj(a, onto)`, `orth(a, onto)`, `std`, `mean`, `lowpass(a, sigma)`,
-`highpass(a, sigma)`, `lerp`, and `clamp`, `where`, `sqrt`, `exp`, `tanh`, `sign`. The maths libraries are there
-without importing anything: `torch`, `F` (torch.nn.functional), `torch.fft`, `torch.linalg` and `math`.
-
-```
-u + w * (c - u)                                     plain CFG
-u + w * orth(c - u, c) + proj(c - u, c)             APG-like: full scale only off the conditional's direction
-c + (w - 1) * (lowpass(c - u, 2) * 0.5 + highpass(c - u, 2) * 1.3)
-u + (1 + (w - 1) * (1 - p)) * (c - u)               guidance that fades out over the run
-u + (1 + (w - 1) * t_raw) * (c - u)                 fades with the unshifted time (flow models)
-from_x0(to_x0(u) + w * (to_x0(c) - to_x0(u)))       plain CFG on the denoised image, whatever the node's space
-```
-
-A syntax error shows on the node when the graph is queued; a runtime error names the formula.
-
-**Formulas are checked.** A formula travels inside the workflow file, so a workflow shared by someone else could
-carry a formula written to harm the machine that runs it. By default a formula is therefore read as a small maths
-language rather than as Python:
-
-| Allowed | Refused |
-|---|---|
-| arithmetic, comparisons, `a if cond else b`, assignments to plain names, `assert`, `if`, list and generator comprehensions, `print` | `import`, `def`, `lambda`, `class`, `for` and `while` loops, `with`, `try`, `del`, f-strings, assigning into a tensor or an attribute |
-| the variables and helpers above; `abs`, `min`, `max`, `sum`, `len`, `range`, `round`, `float`, `int`, `bool`, `tuple`, `list`, `zip`, `enumerate`, `any`, `all`, `isinstance`, `pow` | every other built-in (`open`, `eval`, `getattr`, `type` ...) and any name or attribute starting with `_` |
-| tensor maths methods and properties: `c.mean(dim=1)`, `c.shape`, `c.abs().amax()`, `c.to(torch.float64)`, the `.values` of `max` and `sort` | in-place methods (ending in `_`), `.numpy()`, storage, hooks, `.backward()`, `.type()` |
-| the maths functions of `torch`, `F`, `torch.fft`, `torch.linalg` and `math` | torch's file, network, compiler and system parts (`torch.save`, `torch.load`, `torch.hub`, `torch.ops` ...) |
-
-To change part of a tensor, build a new one with `where(mask, a, b)`. A refused formula says what it met and on
-which line.
-
-**Full Python, on your own machine only.** To run formulas as Python instead (imports of torch and numpy modules,
-all of torch), set the environment variable `CFG_MEGAPACK_FORMULA_PYTHON=1` before starting ComfyUI:
-
-| System | How |
-|---|---|
-| Windows | the line `set CFG_MEGAPACK_FORMULA_PYTHON=1` before ComfyUI starts (in the .bat file that starts it, or in the same console) |
-| Linux, macOS | `CFG_MEGAPACK_FORMULA_PYTHON=1 python main.py` |
-
-It is off unless you set it, and ComfyUI reads it when a formula compiles, so a running ComfyUI needs a restart
-to pick it up. With it on, every workflow you queue runs its formulas as Python on your machine, and a formula can
-then reach anything Python can: queue only workflows you trust. The console notes it once, at the first formula.
-
-Anima's latents arrive as (batch, 16, height, width). `formulas/pentachoron.txt` is a longer example (paste it
-whole, space noise): the [Pentachoron](#3-cfg-mix-pentachoron) node's rule written as a formula, which gives the
-same numbers bit for bit.
 
 ### 4 CFG Where: Frequency Bands
 

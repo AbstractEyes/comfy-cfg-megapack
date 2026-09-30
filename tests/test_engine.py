@@ -3,7 +3,6 @@
 Run from the repository folder:  python tests/test_engine.py
 The GPU is hidden before torch is imported and the file asserts CUDA is unavailable."""
 import os
-import subprocess
 import sys
 import tempfile
 import json
@@ -154,48 +153,23 @@ def test_apg_momentum_resets_on_new_run():
     assert close(first, again, 1e-5), "a rising sigma must reset the momentum"
 
 
-def test_formula_equals_cfg_in_every_space():
+def standard_plan(space):
+    return plan_with(mix={"kind": "rule", "rule": "standard", "space": space, "scale": -1.0})
+
+
+def test_standard_rule_equals_cfg_in_every_space():
     x, c, u, sig = batch()
     for space in engine.SPACES:
-        p = plan_with(mix={"kind": "formula", "formula": "u + w * (c - u)", "space": space, "scale": -1.0})
-        assert close(run(p, x, c, u, sig), cfg(c, u, 6.0), 5e-4), space
+        assert close(run(standard_plan(space), x, c, u, sig), cfg(c, u, 6.0), 5e-4), space
 
 
 def test_space_round_trip_is_exact_enough():
     # float64 conversions: plain CFG computed in eps or v space lands on the x0-space result to float32 precision
     x, c, u, sig = batch(5.0)
-    ref = run(plan_with(mix={"kind": "formula", "formula": "u + w * (c - u)", "space": "x0", "scale": -1.0}), x, c, u, sig)
+    ref = run(standard_plan("x0"), x, c, u, sig)
     for space in ("eps", "v"):
-        out = run(plan_with(mix={"kind": "formula", "formula": "u + w * (c - u)", "space": space, "scale": -1.0}),
-                  x, c, u, sig)
+        out = run(standard_plan(space), x, c, u, sig)
         assert float((out - ref).abs().max()) <= 4 * torch.finfo(torch.float32).eps * float(ref.abs().max()), space
-
-
-def test_formula_helpers_and_multiline():
-    x, c, u, sig = batch()
-    f = "d = c - u\nresult = u + w * orth(d, c) + proj(d, c)"
-    p = plan_with(mix={"kind": "formula", "formula": f, "space": "x0", "scale": -1.0})
-    out = run(p, x, c, u, sig)
-    d = c - u
-    par = (d * c).flatten(1).sum(1).view(B, 1, 1, 1) / c.flatten(1).pow(2).sum(1).view(B, 1, 1, 1) * c
-    assert close(out, u + 6.0 * (d - par) + par, 5e-4)
-
-
-def test_formula_errors_are_readable():
-    try:
-        engine.compile_formula("u + w * (c - u")
-    except ValueError as e:
-        assert "syntax" in str(e)
-    else:
-        raise AssertionError("expected a syntax error")
-    x, c, u, sig = batch()
-    p = plan_with(mix={"kind": "formula", "formula": "u + w * nope", "space": "x0", "scale": -1.0})
-    try:
-        run(p, x, c, u, sig)
-    except ValueError as e:
-        assert "nope" in str(e) and "formula" in str(e)
-    else:
-        raise AssertionError("expected a name error")
 
 
 def test_schedule_constant_and_window():
@@ -486,7 +460,7 @@ def test_flow_noise_space_holds_at_sigma_one():
         assert close(back, x0, 1e-9), sigma
     x, c, u, _ = flow_batch()
     for sigma in (1.0, 1 - 3.3e-5):
-        out = run_flow(formula_plan("u + w * (c - u)"), x, c, u, torch.full((B,), sigma))
+        out = run_flow(standard_plan("eps"), x, c, u, torch.full((B,), sigma))
         assert close(out, cfg(c, u, 4.5), 5e-4), sigma
 
 
@@ -598,7 +572,7 @@ def test_govern_probe_columns_and_readout():
     assert "6 govern: off" in engine.describe_plan(engine.empty_plan())
 
 
-# -- flow matching with a shift, Anima's single-frame latents, the DiT weak branch, the formula box -------------------
+# -- flow matching with a shift, Anima's single-frame latents, the DiT weak branch ------------------------------------
 
 class CONST:
     """Named like ComfyUI's CONST so is_flow_sampling reads the fakes below as flow sampling."""
@@ -615,18 +589,6 @@ class FakeFlowSampling(CONST):
             return 0.0
         t = 1.0 - p
         return self.shift * t / (1 + (self.shift - 1) * t)
-
-
-class ModelSamplingFlux(CONST):
-    """ComfyUI's Flux-type sampling: sigma = exp(mu) / (exp(mu) + 1/t - 1), mu stored as its shift."""
-    shift = 1.15
-
-    def percent_to_sigma(self, p):
-        if p <= 0:
-            return 1.0
-        if p >= 1:
-            return 0.0
-        return math.exp(self.shift) / (math.exp(self.shift) + 1 / (1.0 - p) - 1)
 
 
 class FakeFlowModel:
@@ -649,33 +611,6 @@ def run_flow(plan, x, c, u, sig, w=4.5, model=None, **kw):
     return rt.guided_x0(x, c, u, sig, w, model=model or FakeFlowModel(), model_options=mo, **kw)
 
 
-def formula_plan(text, space="eps"):
-    return plan_with(mix={"kind": "formula", "formula": text, "space": space, "scale": -1.0})
-
-
-def test_flow_formula_variables_undo_the_shift():
-    x, c, u, sig = flow_batch(t=0.4, shift=3.0)
-    s = float(sig[0])
-    check = (f"assert flow and shift == 3.0 and space == 'eps'\n"
-             f"assert abs(t_raw - 0.4) < 1e-6, t_raw\n"
-             f"assert abs(s_t - {s!r}) < 1e-6 and abs(a_t - (1 - {s!r})) < 1e-6\n"
-             f"result = u + w * (c - u)")
-    out = run_flow(formula_plan(check), x, c, u, sig)
-    assert close(out, cfg(c, u, 4.5), 5e-4)
-    # Flux-type sampling: the shift is exp(mu) and t_raw still undoes it
-    assert abs(engine.flow_shift(ModelSamplingFlux()) - math.exp(1.15)) < 1e-12
-    t = 0.3
-    s_flux = math.exp(1.15) / (math.exp(1.15) + 1 / t - 1)
-    flux = type("FluxModel", (), {"model_sampling": ModelSamplingFlux()})()
-    out = run_flow(formula_plan("assert abs(t_raw - 0.3) < 1e-6, t_raw\nresult = c"), x, c, u,
-                   torch.full((B,), s_flux), model=flux)
-    assert close(out, c, 1e-4)
-    # eps models: shift 1, t_raw = t, a_t = 1
-    xe, ce, ue, se = batch(2.0)
-    out = run(formula_plan("assert not flow and shift == 1.0 and a_t == 1.0 and t_raw == t\nresult = c"), xe, ce, ue, se)
-    assert close(out, ce, 1e-4)
-
-
 def test_flow_converters_read_noise_and_velocity():
     torch.manual_seed(1)
     sigma = 0.6
@@ -684,19 +619,17 @@ def test_flow_converters_read_noise_and_velocity():
     sv = torch.full((B, 1, 1, 1), sigma, dtype=torch.float64)
     assert close(engine.to_space(x0, x, sv, "eps", True), n, 1e-10)             # eps is the noise itself
     assert close(engine.to_space(x0, x, sv, "v", True), n - x0, 1e-10)          # v is the velocity
-    env = engine.formula_flow_env("eps", x, sv, True, sigma, 3.0, 1 / 3)
-    assert close(env["to_x0"](n), x0, 1e-10) and close(env["to_v"](n), n - x0, 1e-10) and close(env["to_eps"](n), n)
-    assert close(env["from_x0"](x0), n, 1e-10) and close(env["from_v"](n - x0), n, 1e-10)       # and back
-    assert env["a_t"] == 1 - sigma and env["s_t"] == sigma and env["flow"] is True
-    # the README's example: plain CFG on the denoised image, written from the noise space, equals plain CFG
+    assert close(engine.from_space(n, x, sv, "eps", True), x0, 1e-10)             # and back
+    assert close(engine.from_space(n - x0, x, sv, "v", True), x0, 1e-10)
+    # plain CFG computed on the noise or the velocity of a flow model equals plain CFG
     x, c, u, sig = flow_batch()
-    f = "from_x0(to_x0(u) + w * (to_x0(c) - to_x0(u)))"
-    assert close(run_flow(formula_plan(f), x, c, u, sig), cfg(c, u, 4.5), 5e-4)
+    for space in ("eps", "v"):
+        assert close(run_flow(standard_plan(space), x, c, u, sig), cfg(c, u, 4.5), 5e-4), space
 
 
 def test_single_frame_latents_run_as_images_and_come_back_5d():
     x5, c5, u5, sig = flow_batch(frame=True)
-    plan = formula_plan("d = c - u\nresult = u + w * orth(d, c) + proj(d, c)")
+    plan = plan_with(mix={"kind": "rule", "rule": "pentachoron", "knobs": {"k": 1.0}, "space": "eps", "scale": -1.0})
     plan["govern"] = gov(0.0, 25.0, "pixel")
     out5 = run_flow(plan, x5, c5, u5, sig)
     out4 = run_flow(plan, x5.squeeze(2), c5.squeeze(2), u5.squeeze(2), sig)
@@ -783,57 +716,6 @@ def test_dit_weak_pass_adds_one_patch_and_leaves_the_options_alone():
                 sys.modules[k] = v
 
 
-PENTA_V1 = """k = 1.0
-r = 1 / math.sqrt(5)
-V = torch.tensor([[1., 1., 1., -r], [1., -1., -1., -r], [-1., 1., -1., -r], [-1., -1., 1., -r],
-                  [0., 0., 0., 4 * r]], dtype=c.dtype, device=c.device) * (math.sqrt(5) / 4)
-g = (w - 1) * (c - u)
-a = torch.einsum('kc,bchw->bkhw', V, g)
-tau = k * a.pow(2).mean(dim=(1, 2, 3), keepdim=True).sqrt() + 1e-12
-z = a / tau
-m = z.abs().amax(dim=1, keepdim=True)
-ep, en = torch.exp(z - m), torch.exp(-z - m)
-result = c + 4 * tau * torch.einsum('kc,bkhw->bchw', V, ep - en) / (ep + en).sum(dim=1, keepdim=True)"""
-
-
-def penta(c, u, w=7.0, k=None, text=None):
-    text = text or open(os.path.join(ROOT, "formulas", "pentachoron.txt"), encoding="utf-8").read()
-    if k is not None:
-        assert text.count("k = 1.0 ") + text.count("k = 1.0\n") == 1
-        text = text.replace("k = 1.0", f"k = {k}", 1)
-    return engine.eval_formula(engine.compile_formula(text), {"c": c, "u": u, "w": w}, text)
-
-
-def test_pentachoron_formula_on_4_and_16_channels():
-    torch.manual_seed(2)
-    c4 = torch.randn(2, 4, 16, 16, dtype=torch.float64)
-    u4 = c4 + 0.15 * torch.randn_like(c4)
-    assert close(penta(c4, u4), penta(c4, u4, text=PENTA_V1), 1e-12)        # the SDXL form is unchanged
-    c16 = torch.randn(2, 16, 16, 16, dtype=torch.float64)
-    u16 = c16 + 0.15 * torch.randn_like(c16)
-    out = penta(c16, u16)
-    assert out.shape == c16.shape and bool(torch.isfinite(out).all())
-    assert close(penta(c16, u16, k=1e6), cfg(c16, u16, 7.0), 1e-6)        # a large k gives plain CFG back
-    # each pixel's push in each group of 4 channels stays within 4 tau (tau = the image's RMS vertex coordinate)
-    r = 1 / math.sqrt(5)
-    V = torch.tensor([[1., 1., 1., -r], [1., -1., -1., -r], [-1., 1., -1., -r], [-1., -1., 1., -r], [0., 0., 0., 4 * r]],
-                     dtype=torch.float64) * (math.sqrt(5) / 4)
-    a = torch.einsum('kc,bgchw->bgkhw', V, (6.0 * (c16 - u16)).reshape(2, 4, 4, 16, 16))
-    tau = a.pow(2).mean(dim=(1, 2, 3, 4)).sqrt().view(2, 1, 1, 1)
-    push = (out - c16).reshape(2, 4, 4, 16, 16).norm(dim=2)
-    assert bool((push <= 4 * tau * (1 + 1e-9)).all()) and float(push.max()) > 0
-    try:
-        penta(torch.randn(1, 6, 8, 8), torch.randn(1, 6, 8, 8))
-    except ValueError as e:
-        assert "divisible by 4" in str(e)
-    else:
-        raise AssertionError("6 channels must raise")
-    x, c, u, sig = flow_batch(channels=16, frame=True)                     # through the engine on an Anima latent
-    text = open(os.path.join(ROOT, "formulas", "pentachoron.txt"), encoding="utf-8").read()
-    out = run_flow(formula_plan(text), x, c, u, sig)
-    assert out.shape == x.shape and bool(torch.isfinite(out).all())
-
-
 def pentachoron_plan(k=1.0, space="eps"):
     return plan_with(mix={"kind": "rule", "rule": "pentachoron", "knobs": {"k": k}, "space": space, "scale": -1.0})
 
@@ -889,154 +771,6 @@ def test_pentachoron_rule_on_4_and_16_channels():
     out = run_flow(pentachoron_plan(), xf, cf, uf, sf)
     assert out.shape == xf.shape and bool(torch.isfinite(out).all())
     assert "pentachoron" in engine.describe_plan(pentachoron_plan())
-
-
-def test_pentachoron_node_equals_the_formula():
-    # the node's rule and formulas/pentachoron.txt through the formula box: the same tensor, bit for bit, in the
-    # noise and velocity spaces (both float64 there); on the denoised image the formula runs in float32 and the node
-    # in float64, so they agree to float32 rounding
-    text = open(os.path.join(ROOT, "formulas", "pentachoron.txt"), encoding="utf-8").read()
-    x, c, u, sig = batch()
-    xf, cf, uf, sf = flow_batch(channels=16, frame=True)
-    for space in ("eps", "v"):
-        assert torch.equal(run(pentachoron_plan(space=space), x, c, u, sig),
-                           run(formula_plan(text, space), x, c, u, sig)), space
-        assert torch.equal(run_flow(pentachoron_plan(space=space), xf, cf, uf, sf),
-                           run_flow(formula_plan(text, space), xf, cf, uf, sf)), space
-    assert close(run(pentachoron_plan(space="x0"), x, c, u, sig), run(formula_plan(text, "x0"), x, c, u, sig), 1e-5)
-    k_text = text.replace("k = 1.0", "k = 0.25", 1)
-    assert torch.equal(run(pentachoron_plan(k=0.25), x, c, u, sig), run(formula_plan(k_text), x, c, u, sig))
-
-
-class _formula_python:
-    """Turn the full-Python opt-in on for a block (it is off by default), and restore it after."""
-
-    def __enter__(self):
-        self.before = os.environ.get(engine.FORMULA_PYTHON_ENV)
-        os.environ[engine.FORMULA_PYTHON_ENV] = "1"
-
-    def __exit__(self, *exc):
-        if self.before is None:
-            os.environ.pop(engine.FORMULA_PYTHON_ENV, None)
-        else:
-            os.environ[engine.FORMULA_PYTHON_ENV] = self.before
-
-
-def test_formula_imports():
-    # checked (the default): F is already there, imports are refused with the opt-in named
-    x, c, u, sig = batch()
-    assert not engine.formula_python_enabled(), "the full-Python opt-in must be off by default"
-    f = "result = u + w * (F.relu(c - u) - F.relu(u - c))"
-    assert close(run(formula_plan(f, "x0"), x, c, u, sig), cfg(c, u, 6.0), 5e-4)
-    f = "t = tuple(range(1, c.ndim))\nresult = c + 0 * c.mean(dim=t, keepdim=True)"
-    assert close(run(formula_plan(f, "x0"), x, c, u, sig), c, 1e-6)
-    for text in ("import torch.nn.functional as F\nresult = c", "import os\nresult = c"):
-        try:
-            engine.compile_formula(text)
-        except ValueError as e:
-            assert "import" in str(e) and engine.FORMULA_PYTHON_ENV in str(e), str(e)
-        else:
-            raise AssertionError("a checked formula must refuse imports")
-    # full Python (the opt-in): torch and numpy imports as before, anything else refused
-    with _formula_python():
-        f = "import torch.nn.functional as F\nresult = u + w * (F.relu(c - u) - F.relu(u - c))"
-        assert close(run(formula_plan(f, "x0"), x, c, u, sig), cfg(c, u, 6.0), 5e-4)
-        try:
-            run(formula_plan("import os\nresult = c", "x0"), x, c, u, sig)
-        except ValueError as e:
-            assert "torch and numpy only" in str(e)
-        else:
-            raise AssertionError("import os must be refused")
-
-
-def test_checked_formulas_refuse_every_escape():
-    # formulas travel inside workflow files: nothing here may read or write a file, run code or reach a module.
-    # 'compile' cases are refused before anything runs (naming the opt-in); 'run' cases stop at the attribute guard
-    # or at a missing name. The canary file must not exist afterwards.
-    canary = os.path.join(tempfile.gettempdir(), f"cfg_formula_canary_{os.getpid()}.pt")
-    if os.path.exists(canary):
-        os.remove(canary)
-    cases = [
-        ("().__class__.__base__.__subclasses__()", "compile"), ("c.__class__", "compile"),
-        ("__import__('os')", "compile"), ("import os\nresult = c", "compile"), ("from os import system", "compile"),
-        ("lambda: 0", "compile"), ("def f():\n    return 0\nresult = c", "compile"),
-        ("for i in range(3):\n    pass\nresult = c", "compile"), ("while False:\n    pass\nresult = c", "compile"),
-        ("with open('x') as f:\n    pass\nresult = c", "compile"), ("c.shape = 1\nresult = c", "compile"),
-        ("c[0] = 0\nresult = c", "compile"), ("f'{c}'", "compile"), ("math.__dict__", "compile"),
-        ("print.__self__", "compile"), ("del c\nresult = u", "compile"), ("try:\n    c\nexcept Exception:\n    c", "compile"),
-        ("global c\nresult = c", "compile"), ("(y := c)", "compile"), ("b'x'", "compile"),
-        (f"torch.save(c, {canary!r})\nresult = c", "run"), (f"torch.load({canary!r})", "run"), ("torch.hub", "run"),
-        ("torch.ops", "run"), ("torch.utils", "run"), ("torch.from_file", "run"), ("c.numpy()", "run"),
-        ("c.storage()", "run"), ("c.untyped_storage()", "run"), ("c.mul_(0)", "run"), ("c.register_hook", "run"),
-        ("c.type('torch.DoubleTensor')", "run"), ("c.backward()", "run"), ("c.grad_fn", "run"), ("c.data", "run"),
-        (f"open({canary!r}, 'w')", "run"), ("getattr(c, 'numpy')", "run"), ("eval('1')", "run"),
-        ("exec('1')", "run"), ("type(c)", "run"), ("vars()", "run"), ("globals()", "run"),
-        ("(x for x in [1]).gi_frame", "run"), ("c.device.type", "run"), ("torch.float32.is_floating_point", "run"),
-        ("sum.x", "run"), ("dot.x", "run"), ("'{0}'.format(c)", "run"), ("F.torch", "run"), ("math.os", "run"),
-        ("torch.nn.Module", "run"), ("torch.fft.os", "run"), ("c.shape.x", "run"),
-    ]
-    env = {"c": torch.randn(1, 4, 8, 8), "u": torch.randn(1, 4, 8, 8), "w": 6.0}
-    for text, where in cases:
-        try:
-            compiled = engine.compile_formula(text)
-        except ValueError as e:
-            assert where == "compile", f"refused at compile but expected to run: {text!r}: {e}"
-            assert engine.FORMULA_PYTHON_ENV in str(e), text
-            continue
-        assert where == "run", f"compiled but should be refused before running: {text!r}"
-        try:
-            engine.eval_formula(compiled, dict(env), text)
-        except ValueError as e:
-            assert "CFG formula failed" in str(e), text
-        else:
-            raise AssertionError(f"a checked formula ran: {text!r}")
-    assert not os.path.exists(canary), "a checked formula wrote a file"
-
-
-def test_checked_formulas_match_full_python():
-    # every documented formula gives the same tensor, bit for bit, in the checked language and in full Python
-    penta = open(os.path.join(ROOT, "formulas", "pentachoron.txt"), encoding="utf-8").read()
-    wf = json.load(open(os.path.join(ROOT, "example_workflows", "CFG Megapack - pentachoron formula AB.json"),
-                        encoding="utf-8"))
-    penta_wf = next(n["widgets_values"][0] for n in wf["nodes"] if n.get("type") == "CFGP_MixFormula")
-    formulas = [penta, penta_wf, "u + w * (c - u)", "u + w * orth(c - u, c) + proj(c - u, c)",
-                "c + (w - 1) * (lowpass(c - u, 2) * 0.5 + highpass(c - u, 2) * 1.3)",
-                "d = c - u\nresult = u + w * orth(d, c) + proj(d, c)",
-                "u + (1 + (w - 1) * (1 - p)) * (c - u)", "u + (1 + (w - 1) * t_raw) * (c - u)",
-                "from_x0(to_x0(u) + w * (to_x0(c) - to_x0(u)))",
-                "g = torch.fft.fft2(c - u)\nresult = u + w * torch.fft.ifft2(g).real",
-                "n = torch.linalg.vector_norm(c - u, dim=1, keepdim=True)\nresult = c + (w - 1) * (c - u) / (1 + n)",
-                "m = (c - u).abs().amax(dim=1, keepdim=True)\nresult = where(m > 1, c, u + w * (c - u))",
-                "result = c if flow else u + w * (c - u)", "c + F.avg_pool2d(c - u, 3, 1, 1) * (w - 1)",
-                "s = sorted_ = None\nresult = u + w * (c - u)"]
-    c, u = torch.randn(2, 4, 8, 8, dtype=torch.float64), torch.randn(2, 4, 8, 8, dtype=torch.float64)
-    x, sig = torch.randn(2, 4, 8, 8, dtype=torch.float64), torch.full((2, 1, 1, 1), 0.6, dtype=torch.float64)
-    env = {"c": c, "u": u, "w": 6.0, "p": 0.25, **engine.formula_flow_env("eps", x, sig, True, 0.6, 3.0, 1 / 3)}
-    for text in formulas:
-        checked = engine.compile_formula(text)
-        assert checked[2] is True, "the default must be the checked language"
-        a = engine.eval_formula(checked, dict(env), text)
-        with _formula_python():
-            full = engine.compile_formula(text)
-            assert full[2] is False
-            b = engine.eval_formula(full, dict(env), text)
-        assert torch.equal(a, b), text[:60]
-
-
-def test_formula_builds_tensors_in_a_fresh_process():
-    # torch's C code imports torch.storage the first time a tensor is built from a list, through the calling frame's
-    # builtins; in a fresh process the formula's frame is that frame. The control (the import hook removed) must fail.
-    code = ("import os, sys; os.environ['CUDA_VISIBLE_DEVICES'] = '-1'; sys.path.insert(0, {root!r}); import torch; "
-            "from cfg_megapack import engine; {extra}c = torch.randn(1, 4, 8, 8); "
-            "f = 'result = c + 0 * torch.tensor([[1., 2.]], dtype=c.dtype)[0, 0]'; "
-            "print(tuple(engine.eval_formula(engine.compile_formula(f), {{'c': c, 'u': c, 'w': 1.0}}, f).shape))")
-    env = dict(os.environ, CUDA_VISIBLE_DEVICES="-1", HF_TOKEN="", HF_HUB_OFFLINE="1")
-    ok = subprocess.run([sys.executable, "-c", code.format(root=ROOT, extra="")], capture_output=True, text=True,
-                        timeout=600, env=env)
-    assert ok.returncode == 0 and "(1, 4, 8, 8)" in ok.stdout, ok.stderr[-400:]
-    control = subprocess.run([sys.executable, "-c", code.format(root=ROOT, extra="engine._SAFE_BUILTINS.pop('__import__'); ")],
-                             capture_output=True, text=True, timeout=600, env=env)
-    assert control.returncode != 0, "the control passed: this torch no longer imports lazily, the test proves nothing"
 
 
 # -- the paper nodes (papers.py): every specification runs through the engine -----------------------------------

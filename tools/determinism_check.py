@@ -44,8 +44,7 @@ def img(res):
 runs = [("plain_1", st.chain("det_plain_1", [])), ("plain_2", st.chain("det_plain_2", [])),
         ("plain_3", st.chain("det_plain_3", [])),
         ("standard_rule", st.chain("det_standard", [st.mix_scale("standard")])),
-        ("formula_x0", st.chain("det_formula_x0", [st.formula("u + w * (c - u)", "denoised (x0)")])),
-        ("formula_eps", st.chain("det_formula_eps", [st.formula("u + w * (c - u)")])),
+        ("standard_eps", st.chain("det_standard_eps", [st.mix_scale("standard", space="noise (eps)")])),
         ("guider_builtin_1", st.reference_guider_graph("det_guider_builtin_1")),
         ("guider_builtin_2", st.reference_guider_graph("det_guider_builtin_2")),
         ("guider_negative_as_null", st.guider_graph("det_guider_nan", "negative_as_null"))]
@@ -62,8 +61,8 @@ def cmp(a, b):
 
 
 print(f"\nsteps {args.steps}, {args.size}x{args.size}:")
-for a, b in [("plain_2", "plain_1"), ("plain_3", "plain_2"), ("standard_rule", "plain_2"), ("formula_x0", "plain_2"),
-             ("formula_eps", "plain_2"), ("guider_builtin_2", "guider_builtin_1"), ("guider_builtin_1", "plain_2"),
+for a, b in [("plain_2", "plain_1"), ("plain_3", "plain_2"), ("standard_rule", "plain_2"), ("standard_eps", "plain_2"),
+             ("guider_builtin_2", "guider_builtin_1"), ("guider_builtin_1", "plain_2"),
              ("guider_negative_as_null", "guider_builtin_2")]:
     cmp(a, b)
 
