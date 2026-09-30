@@ -19,7 +19,7 @@ Documentation = "https://github.com/AbstractEyes/comfy-cfg-megapack/blob/main/HO
 [tool.comfy]
 # The Comfy Registry publisher id (registry.comfy.org: the name after @ on the publisher page). Publishing runs from
 # .github/workflows/publish_action.yml when this file changes on main and the REGISTRY_ACCESS_TOKEN secret is set.
-PublisherId = ""
+PublisherId = "abstractpowered"
 DisplayName = "CFG Megapack"
 Icon = "https://raw.githubusercontent.com/AbstractEyes/comfy-cfg-megapack/main/docs/icon.jpg"
 requires-comfyui = ">=0.38.0"
