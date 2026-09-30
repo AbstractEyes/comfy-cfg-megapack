@@ -1,5 +1,10 @@
 # CFG Megapack for ComfyUI
 
+> **This is the experimental branch:** the main branch plus **CFG Mix: Your Own Formula**, a node that evaluates
+> guidance formulas typed into it (a checked maths language by default; full Python only with
+> `CFG_MEGAPACK_FORMULA_PYTHON=1` on your own machine). It is not published to the Comfy Registry; ComfyUI-Manager
+> and the registry install the main branch, without this node.
+
 Classifier-free guidance, taken apart. Every guided sampling step is split into seven stages (when to guide, a weak
 branch, how to combine the predictions, where to guide, magnitude correction, an angle governor, and measurement),
 with one node per stage, so a structural idea can be tried by swapping one node while everything else stays fixed.
