@@ -1,0 +1,98 @@
+{
+ "ckpt": {
+  "class_type": "CheckpointLoaderSimple",
+  "inputs": {
+   "ckpt_name": "sd_xl_base_1.0.safetensors"
+  }
+ },
+ "pos": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "photograph of an old fisherman in a yellow raincoat on a harbor at dawn, weathered face, detailed, sharp focus",
+   "clip": [
+    "ckpt",
+    1
+   ]
+  }
+ },
+ "neg": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "blurry, low quality, watermark, text",
+   "clip": [
+    "ckpt",
+    1
+   ]
+  }
+ },
+ "lat": {
+  "class_type": "EmptyLatentImage",
+  "inputs": {
+   "width": 1024,
+   "height": 1024,
+   "batch_size": 1
+  }
+ },
+ "p0": {
+  "class_type": "CFGP_VAGS",
+  "inputs": {
+   "kappa": 1.0,
+   "scale": -1.0,
+   "space": "auto (the method's own)",
+   "model": [
+    "ckpt",
+    0
+   ]
+  }
+ },
+ "ks": {
+  "class_type": "KSampler",
+  "inputs": {
+   "model": [
+    "p0",
+    0
+   ],
+   "seed": 1234,
+   "steps": 50,
+   "cfg": 7.0,
+   "sampler_name": "dpmpp_2m",
+   "scheduler": "karras",
+   "positive": [
+    "pos",
+    0
+   ],
+   "negative": [
+    "neg",
+    0
+   ],
+   "latent_image": [
+    "lat",
+    0
+   ],
+   "denoise": 1.0
+  }
+ },
+ "dec": {
+  "class_type": "VAEDecode",
+  "inputs": {
+   "samples": [
+    "ks",
+    0
+   ],
+   "vae": [
+    "ckpt",
+    2
+   ]
+  }
+ },
+ "save": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "dec",
+    0
+   ],
+   "filename_prefix": "cfg_showcase/sdxl/VAGS"
+  }
+ }
+}

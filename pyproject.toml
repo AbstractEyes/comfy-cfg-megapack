@@ -1,0 +1,17 @@
+[project]
+name = "comfy-cfg-megapack"
+description = "Classifier-free guidance for ComfyUI, taken apart into stages (when, weak branch, combine, where, correct, govern, measure), with one node per published method on the same engine. SDXL, SD1.5 and flow-matching models (Anima)."
+version = "0.1.0"
+license = { file = "LICENSE" }
+# Nothing beyond ComfyUI's own requirements: the pack uses torch and the Python standard library only.
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/AbstractEyes/comfy-cfg-megapack"
+Documentation = "https://github.com/AbstractEyes/comfy-cfg-megapack/blob/main/HOWTO.md"
+
+[tool.comfy]
+# Set PublisherId to your Comfy Registry publisher id before running `comfy node publish`.
+PublisherId = ""
+DisplayName = "CFG Megapack"
+Icon = ""

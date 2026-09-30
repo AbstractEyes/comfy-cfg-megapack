@@ -1,0 +1,1911 @@
+{
+ "id": "0f2b2347-1e84-44e8-ac32-d454ab950779",
+ "revision": 0,
+ "last_node_id": 22,
+ "last_link_id": 50,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "UNETLoader",
+   "pos": [
+    40,
+    40
+   ],
+   "size": [
+    300,
+    82
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "unet_name",
+     "name": "unet_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "unet_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "weight_dtype",
+     "name": "weight_dtype",
+     "type": "COMBO",
+     "widget": {
+      "name": "weight_dtype"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      50
+     ]
+    }
+   ],
+   "title": "Load Anima",
+   "properties": {
+    "Node name for S&R": "UNETLoader"
+   },
+   "widgets_values": [
+    "anima-base-v1.0.safetensors",
+    "default"
+   ]
+  },
+  {
+   "id": 2,
+   "type": "CLIPTextEncode",
+   "pos": [
+    400,
+    40
+   ],
+   "size": [
+    400,
+    200
+   ],
+   "flags": {},
+   "order": 3,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "clip",
+     "name": "clip",
+     "type": "CLIP",
+     "link": 24
+    },
+    {
+     "localized_name": "text",
+     "name": "text",
+     "type": "STRING",
+     "widget": {
+      "name": "text"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "CONDITIONING",
+     "name": "CONDITIONING",
+     "type": "CONDITIONING",
+     "links": [
+      34,
+      38
+     ]
+    }
+   ],
+   "title": "Positive",
+   "properties": {
+    "Node name for S&R": "CLIPTextEncode"
+   },
+   "widgets_values": [
+    "masterpiece, best quality, score_7, safe, no humans, fox, red fox, sitting, snow, forest, dawn, detailed"
+   ],
+   "widgets_values_named": {
+    "text": "a red fox sitting in fresh snow at dawn, detailed wildlife photo"
+   }
+  },
+  {
+   "id": 3,
+   "type": "CLIPTextEncode",
+   "pos": [
+    400,
+    310
+   ],
+   "size": [
+    400,
+    200
+   ],
+   "flags": {},
+   "order": 4,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "clip",
+     "name": "clip",
+     "type": "CLIP",
+     "link": 25
+    },
+    {
+     "localized_name": "text",
+     "name": "text",
+     "type": "STRING",
+     "widget": {
+      "name": "text"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "CONDITIONING",
+     "name": "CONDITIONING",
+     "type": "CONDITIONING",
+     "links": [
+      35,
+      39
+     ]
+    }
+   ],
+   "title": "Negative",
+   "properties": {
+    "Node name for S&R": "CLIPTextEncode"
+   },
+   "widgets_values": [
+    "worst quality, low quality, score_1, score_2, score_3, artist name, blurry, jpeg artifacts, chromatic aberration"
+   ],
+   "widgets_values_named": {
+    "text": "blurry, low quality, watermark, text"
+   }
+  },
+  {
+   "id": 4,
+   "type": "EmptyLatentImage",
+   "pos": [
+    400,
+    580
+   ],
+   "size": [
+    270,
+    106
+   ],
+   "flags": {},
+   "order": 1,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "width",
+     "name": "width",
+     "type": "INT",
+     "widget": {
+      "name": "width"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "height",
+     "name": "height",
+     "type": "INT",
+     "widget": {
+      "name": "height"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "batch_size",
+     "name": "batch_size",
+     "type": "INT",
+     "widget": {
+      "name": "batch_size"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "LATENT",
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [
+      36,
+      40
+     ]
+    }
+   ],
+   "title": "Latent",
+   "properties": {
+    "Node name for S&R": "EmptyLatentImage"
+   },
+   "widgets_values": [
+    1024,
+    1024,
+    1
+   ],
+   "widgets_values_named": {
+    "width": 1024,
+    "height": 1024,
+    "batch_size": 1
+   }
+  },
+  {
+   "id": 5,
+   "type": "CFGP_When",
+   "pos": [
+    890,
+    40
+   ],
+   "size": [
+    327.2837890625,
+    250
+   ],
+   "flags": {},
+   "order": 2,
+   "mode": 4,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 26
+    },
+    {
+     "localized_name": "shape",
+     "name": "shape",
+     "type": "COMBO",
+     "widget": {
+      "name": "shape"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "start_percent",
+     "name": "start_percent",
+     "type": "FLOAT",
+     "widget": {
+      "name": "start_percent"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "end_percent",
+     "name": "end_percent",
+     "type": "FLOAT",
+     "widget": {
+      "name": "end_percent"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "outside",
+     "name": "outside",
+     "type": "COMBO",
+     "widget": {
+      "name": "outside"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "outside_scale",
+     "name": "outside_scale",
+     "type": "FLOAT",
+     "widget": {
+      "name": "outside_scale"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "floor",
+     "name": "floor",
+     "type": "FLOAT",
+     "widget": {
+      "name": "floor"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "shape_a",
+     "name": "shape_a",
+     "type": "FLOAT",
+     "widget": {
+      "name": "shape_a"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "shape_b",
+     "name": "shape_b",
+     "type": "FLOAT",
+     "widget": {
+      "name": "shape_b"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "skip_uncond_outside",
+     "name": "skip_uncond_outside",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "skip_uncond_outside"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      27
+     ]
+    }
+   ],
+   "title": "1 When",
+   "properties": {
+    "Node name for S&R": "CFGP_When"
+   },
+   "widgets_values": [
+    "constant",
+    0,
+    1,
+    "no guidance (conditional)",
+    1,
+    0,
+    -1,
+    -1,
+    true
+   ],
+   "widgets_values_named": {
+    "shape": "constant",
+    "start_percent": 0,
+    "end_percent": 1,
+    "outside": "no guidance (conditional)",
+    "outside_scale": 1,
+    "floor": 0,
+    "shape_a": -1,
+    "shape_b": -1,
+    "skip_uncond_outside": true
+   }
+  },
+  {
+   "id": 6,
+   "type": "CFGP_WeakPerturbed",
+   "pos": [
+    890,
+    360
+   ],
+   "size": [
+    389.3267578125,
+    178
+   ],
+   "flags": {},
+   "order": 5,
+   "mode": 4,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 27
+    },
+    {
+     "localized_name": "method",
+     "name": "method",
+     "type": "COMBO",
+     "widget": {
+      "name": "method"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "scale",
+     "name": "scale",
+     "type": "FLOAT",
+     "widget": {
+      "name": "scale"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "mode",
+     "name": "mode",
+     "type": "COMBO",
+     "widget": {
+      "name": "mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "blocks",
+     "name": "blocks",
+     "type": "COMBO",
+     "widget": {
+      "name": "blocks"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "blur_sigma",
+     "name": "blur_sigma",
+     "type": "FLOAT",
+     "widget": {
+      "name": "blur_sigma"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "temperature",
+     "name": "temperature",
+     "type": "FLOAT",
+     "widget": {
+      "name": "temperature"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      28
+     ]
+    }
+   ],
+   "title": "2 Weak branch (Anima: SEG only)",
+   "properties": {
+    "Node name for S&R": "CFGP_WeakPerturbed"
+   },
+   "widgets_values": [
+    "seg (blurred queries)",
+    3,
+    "add on top of CFG",
+    "middle (PAG / SEG default)",
+    10,
+    2
+   ],
+   "widgets_values_named": {
+    "method": "seg (blurred queries)",
+    "scale": 3,
+    "mode": "add on top of CFG",
+    "blocks": "middle (PAG / SEG default)",
+    "blur_sigma": 10,
+    "temperature": 2
+   }
+  },
+  {
+   "id": 7,
+   "type": "CFGP_MixDirection",
+   "pos": [
+    890,
+    608
+   ],
+   "size": [
+    276.18359375,
+    202
+   ],
+   "flags": {},
+   "order": 7,
+   "mode": 4,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 28
+    },
+    {
+     "localized_name": "rule",
+     "name": "rule",
+     "type": "COMBO",
+     "widget": {
+      "name": "rule"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "scale",
+     "name": "scale",
+     "type": "FLOAT",
+     "widget": {
+      "name": "scale"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "eta",
+     "name": "eta",
+     "type": "FLOAT",
+     "widget": {
+      "name": "eta"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "norm_threshold",
+     "name": "norm_threshold",
+     "type": "FLOAT",
+     "widget": {
+      "name": "norm_threshold"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "momentum",
+     "name": "momentum",
+     "type": "FLOAT",
+     "widget": {
+      "name": "momentum"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "max_angle_degrees",
+     "name": "max_angle_degrees",
+     "type": "FLOAT",
+     "widget": {
+      "name": "max_angle_degrees"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "space",
+     "name": "space",
+     "type": "COMBO",
+     "widget": {
+      "name": "space"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      29
+     ]
+    }
+   ],
+   "title": "3 Mix",
+   "properties": {
+    "Node name for S&R": "CFGP_MixDirection"
+   },
+   "widgets_values": [
+    "apg",
+    -1,
+    0,
+    15,
+    -0.5,
+    60,
+    "auto (the method's own)"
+   ],
+   "widgets_values_named": {
+    "rule": "apg",
+    "scale": -1,
+    "eta": 0,
+    "norm_threshold": 15,
+    "momentum": -0.5,
+    "max_angle_degrees": 60,
+    "space": "auto (the method's own)"
+   }
+  },
+  {
+   "id": 8,
+   "type": "CFGP_WhereBands",
+   "pos": [
+    890,
+    880
+   ],
+   "size": [
+    299.304296875,
+    154
+   ],
+   "flags": {},
+   "order": 9,
+   "mode": 4,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 29
+    },
+    {
+     "localized_name": "method",
+     "name": "method",
+     "type": "COMBO",
+     "widget": {
+      "name": "method"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "low_multiplier",
+     "name": "low_multiplier",
+     "type": "FLOAT",
+     "widget": {
+      "name": "low_multiplier"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "high_multiplier",
+     "name": "high_multiplier",
+     "type": "FLOAT",
+     "widget": {
+      "name": "high_multiplier"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "blur_sigma",
+     "name": "blur_sigma",
+     "type": "FLOAT",
+     "widget": {
+      "name": "blur_sigma"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "fft_cutoff",
+     "name": "fft_cutoff",
+     "type": "FLOAT",
+     "widget": {
+      "name": "fft_cutoff"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      30
+     ]
+    }
+   ],
+   "title": "4 Where",
+   "properties": {
+    "Node name for S&R": "CFGP_WhereBands"
+   },
+   "widgets_values": [
+    "gaussian",
+    1,
+    1,
+    2,
+    0.25
+   ],
+   "widgets_values_named": {
+    "method": "gaussian",
+    "low_multiplier": 1,
+    "high_multiplier": 1,
+    "blur_sigma": 2,
+    "fft_cutoff": 0.25
+   }
+  },
+  {
+   "id": 9,
+   "type": "CFGP_Correct",
+   "pos": [
+    890,
+    1104
+   ],
+   "size": [
+    270,
+    202
+   ],
+   "flags": {},
+   "order": 11,
+   "mode": 4,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 30
+    },
+    {
+     "localized_name": "method",
+     "name": "method",
+     "type": "COMBO",
+     "widget": {
+      "name": "method"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "strength",
+     "name": "strength",
+     "type": "FLOAT",
+     "widget": {
+      "name": "strength"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "cap_ratio",
+     "name": "cap_ratio",
+     "type": "FLOAT",
+     "widget": {
+      "name": "cap_ratio"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "mimic_scale",
+     "name": "mimic_scale",
+     "type": "FLOAT",
+     "widget": {
+      "name": "mimic_scale"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "percentile",
+     "name": "percentile",
+     "type": "FLOAT",
+     "widget": {
+      "name": "percentile"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "softness",
+     "name": "softness",
+     "type": "FLOAT",
+     "widget": {
+      "name": "softness"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "space",
+     "name": "space",
+     "type": "COMBO",
+     "widget": {
+      "name": "space"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      31
+     ]
+    }
+   ],
+   "title": "5 Correct",
+   "properties": {
+    "Node name for S&R": "CFGP_Correct"
+   },
+   "widgets_values": [
+    "rescale_std",
+    0.7,
+    1.05,
+    4,
+    0.995,
+    1,
+    "auto (the method's own)"
+   ],
+   "widgets_values_named": {
+    "method": "rescale_std",
+    "strength": 0.7,
+    "cap_ratio": 1.05,
+    "mimic_scale": 4,
+    "percentile": 0.995,
+    "softness": 1,
+    "space": "auto (the method's own)"
+   }
+  },
+  {
+   "id": 10,
+   "type": "CFGP_Probe",
+   "pos": [
+    890,
+    1700
+   ],
+   "size": [
+    299.81015625,
+    82
+   ],
+   "flags": {},
+   "order": 12,
+   "mode": 4,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 47
+    },
+    {
+     "localized_name": "filename_prefix",
+     "name": "filename_prefix",
+     "type": "STRING",
+     "widget": {
+      "name": "filename_prefix"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "print_every",
+     "name": "print_every",
+     "type": "INT",
+     "widget": {
+      "name": "print_every"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      32,
+      37
+     ]
+    }
+   ],
+   "title": "7 Measure",
+   "properties": {
+    "Node name for S&R": "CFGP_Probe"
+   },
+   "widgets_values": [
+    "anima_stack",
+    0
+   ],
+   "widgets_values_named": {
+    "filename_prefix": "sdxl_stack",
+    "print_every": 0
+   }
+  },
+  {
+   "id": 11,
+   "type": "CFGP_Readout",
+   "pos": [
+    1369.3267578125,
+    704
+   ],
+   "size": [
+    159.96640625,
+    26
+   ],
+   "flags": {},
+   "order": 13,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 32
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "plan",
+     "name": "plan",
+     "type": "STRING",
+     "links": null
+    }
+   ],
+   "title": "Plan readout",
+   "properties": {
+    "Node name for S&R": "CFGP_Readout"
+   }
+  },
+  {
+   "id": 12,
+   "type": "KSampler",
+   "pos": [
+    1369.3267578125,
+    40
+   ],
+   "size": [
+    270,
+    262
+   ],
+   "flags": {},
+   "order": 6,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 33
+    },
+    {
+     "localized_name": "positive",
+     "name": "positive",
+     "type": "CONDITIONING",
+     "link": 34
+    },
+    {
+     "localized_name": "negative",
+     "name": "negative",
+     "type": "CONDITIONING",
+     "link": 35
+    },
+    {
+     "localized_name": "latent_image",
+     "name": "latent_image",
+     "type": "LATENT",
+     "link": 36
+    },
+    {
+     "localized_name": "seed",
+     "name": "seed",
+     "type": "INT",
+     "widget": {
+      "name": "seed"
+     },
+     "link": 48
+    },
+    {
+     "localized_name": "steps",
+     "name": "steps",
+     "type": "INT",
+     "widget": {
+      "name": "steps"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "cfg",
+     "name": "cfg",
+     "type": "FLOAT",
+     "widget": {
+      "name": "cfg"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "sampler_name",
+     "name": "sampler_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "sampler_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "scheduler",
+     "name": "scheduler",
+     "type": "COMBO",
+     "widget": {
+      "name": "scheduler"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "denoise",
+     "name": "denoise",
+     "type": "FLOAT",
+     "widget": {
+      "name": "denoise"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "LATENT",
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [
+      41
+     ]
+    }
+   ],
+   "title": "Sampler: plain CFG",
+   "properties": {
+    "Node name for S&R": "KSampler"
+   },
+   "widgets_values": [
+    1234,
+    "randomize",
+    40,
+    4.5,
+    "er_sde",
+    "simple",
+    1
+   ],
+   "widgets_values_named": {
+    "seed": 1234,
+    "control_after_generate": "randomize",
+    "steps": 30,
+    "cfg": 7,
+    "sampler_name": "dpmpp_2m",
+    "scheduler": "karras",
+    "denoise": 1
+   }
+  },
+  {
+   "id": 13,
+   "type": "KSampler",
+   "pos": [
+    1369.3267578125,
+    372
+   ],
+   "size": [
+    270,
+    262
+   ],
+   "flags": {},
+   "order": 14,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 37
+    },
+    {
+     "localized_name": "positive",
+     "name": "positive",
+     "type": "CONDITIONING",
+     "link": 38
+    },
+    {
+     "localized_name": "negative",
+     "name": "negative",
+     "type": "CONDITIONING",
+     "link": 39
+    },
+    {
+     "localized_name": "latent_image",
+     "name": "latent_image",
+     "type": "LATENT",
+     "link": 40
+    },
+    {
+     "localized_name": "seed",
+     "name": "seed",
+     "type": "INT",
+     "widget": {
+      "name": "seed"
+     },
+     "link": 49
+    },
+    {
+     "localized_name": "steps",
+     "name": "steps",
+     "type": "INT",
+     "widget": {
+      "name": "steps"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "cfg",
+     "name": "cfg",
+     "type": "FLOAT",
+     "widget": {
+      "name": "cfg"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "sampler_name",
+     "name": "sampler_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "sampler_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "scheduler",
+     "name": "scheduler",
+     "type": "COMBO",
+     "widget": {
+      "name": "scheduler"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "denoise",
+     "name": "denoise",
+     "type": "FLOAT",
+     "widget": {
+      "name": "denoise"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "LATENT",
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [
+      44
+     ]
+    }
+   ],
+   "title": "Sampler: variant",
+   "properties": {
+    "Node name for S&R": "KSampler"
+   },
+   "widgets_values": [
+    1234,
+    "randomize",
+    40,
+    4.5,
+    "er_sde",
+    "simple",
+    1
+   ],
+   "widgets_values_named": {
+    "seed": 1234,
+    "control_after_generate": "randomize",
+    "steps": 30,
+    "cfg": 7,
+    "sampler_name": "dpmpp_2m",
+    "scheduler": "karras",
+    "denoise": 1
+   }
+  },
+  {
+   "id": 14,
+   "type": "VAEDecode",
+   "pos": [
+    1729.3267578125,
+    40
+   ],
+   "size": [
+    140,
+    46
+   ],
+   "flags": {},
+   "order": 8,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "samples",
+     "name": "samples",
+     "type": "LATENT",
+     "link": 41
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "type": "VAE",
+     "link": 42
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "IMAGE",
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      43
+     ]
+    }
+   ],
+   "title": "Decode: plain",
+   "properties": {
+    "Node name for S&R": "VAEDecode"
+   }
+  },
+  {
+   "id": 15,
+   "type": "SaveImage",
+   "pos": [
+    1963.7619140625002,
+    40
+   ],
+   "size": [
+    420,
+    470
+   ],
+   "flags": {},
+   "order": 10,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "link": 43
+    },
+    {
+     "localized_name": "filename_prefix",
+     "name": "filename_prefix",
+     "type": "STRING",
+     "widget": {
+      "name": "filename_prefix"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "links": null
+    }
+   ],
+   "title": "Save: plain",
+   "properties": {},
+   "widgets_values": [
+    "cfg_anima/plain"
+   ],
+   "widgets_values_named": {
+    "filename_prefix": "cfg_ab/plain"
+   }
+  },
+  {
+   "id": 16,
+   "type": "VAEDecode",
+   "pos": [
+    1729.3267578125,
+    156
+   ],
+   "size": [
+    144.43515625,
+    46
+   ],
+   "flags": {},
+   "order": 15,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "samples",
+     "name": "samples",
+     "type": "LATENT",
+     "link": 44
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "type": "VAE",
+     "link": 45
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "IMAGE",
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      46
+     ]
+    }
+   ],
+   "title": "Decode: variant",
+   "properties": {
+    "Node name for S&R": "VAEDecode"
+   }
+  },
+  {
+   "id": 17,
+   "type": "SaveImage",
+   "pos": [
+    1963.7619140625002,
+    560
+   ],
+   "size": [
+    420,
+    470
+   ],
+   "flags": {},
+   "order": 16,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "link": 46
+    },
+    {
+     "localized_name": "filename_prefix",
+     "name": "filename_prefix",
+     "type": "STRING",
+     "widget": {
+      "name": "filename_prefix"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "links": null
+    }
+   ],
+   "title": "Save: variant",
+   "properties": {},
+   "widgets_values": [
+    "cfg_anima/variant"
+   ],
+   "widgets_values_named": {
+    "filename_prefix": "cfg_ab/variant"
+   }
+  },
+  {
+   "id": 18,
+   "type": "CFGP_GovernAngle",
+   "pos": [
+    890,
+    1376
+   ],
+   "size": [
+    330,
+    250
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 31
+    },
+    {
+     "localized_name": "max_angle_degrees",
+     "name": "max_angle_degrees",
+     "type": "FLOAT",
+     "widget": {
+      "name": "max_angle_degrees"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "min_angle_degrees",
+     "name": "min_angle_degrees",
+     "type": "FLOAT",
+     "widget": {
+      "name": "min_angle_degrees"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "unit",
+     "name": "unit",
+     "type": "COMBO",
+     "widget": {
+      "name": "unit"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "home",
+     "name": "home",
+     "type": "COMBO",
+     "widget": {
+      "name": "home"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "start_percent",
+     "name": "start_percent",
+     "type": "FLOAT",
+     "widget": {
+      "name": "start_percent"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "end_percent",
+     "name": "end_percent",
+     "type": "FLOAT",
+     "widget": {
+      "name": "end_percent"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "space",
+     "name": "space",
+     "type": "COMBO",
+     "widget": {
+      "name": "space"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      47
+     ]
+    }
+   ],
+   "title": "6 Govern",
+   "properties": {
+    "Node name for S&R": "CFGP_GovernAngle"
+   },
+   "widgets_values": [
+    20.0,
+    0.0,
+    "whole image (one vector per image)",
+    "conditional (how far guidance turns the prediction)",
+    0.0,
+    1.0,
+    "auto (the method's own)"
+   ],
+   "widgets_values_named": {
+    "max_angle_degrees": 20.0,
+    "min_angle_degrees": 0.0,
+    "unit": "whole image (one vector per image)",
+    "home": "conditional (how far guidance turns the prediction)",
+    "start_percent": 0.0,
+    "end_percent": 1.0,
+    "space": "auto (the method's own)"
+   }
+  },
+  {
+   "id": 19,
+   "type": "PrimitiveInt",
+   "pos": [
+    1369.3,
+    790
+   ],
+   "size": [
+    270,
+    82
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "value",
+     "name": "value",
+     "type": "INT",
+     "widget": {
+      "name": "value"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "INT",
+     "name": "INT",
+     "type": "INT",
+     "links": [
+      48,
+      49
+     ]
+    }
+   ],
+   "title": "Seed (shared by both samplers)",
+   "properties": {
+    "Node name for S&R": "PrimitiveInt"
+   },
+   "widgets_values": [
+    1234,
+    "randomize"
+   ]
+  },
+  {
+   "id": 20,
+   "type": "ModelSamplingAuraFlow",
+   "pos": [
+    40,
+    170
+   ],
+   "size": [
+    300,
+    82
+   ],
+   "flags": {},
+   "order": 1,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 50
+    },
+    {
+     "localized_name": "shift",
+     "name": "shift",
+     "type": "FLOAT",
+     "widget": {
+      "name": "shift"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "sampling",
+     "name": "sampling",
+     "type": "COMBO",
+     "widget": {
+      "name": "sampling"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      26,
+      33
+     ]
+    }
+   ],
+   "title": "Shift 3 (Anima's own)",
+   "properties": {
+    "Node name for S&R": "ModelSamplingAuraFlow"
+   },
+   "widgets_values": [
+    3.0,
+    "flow"
+   ]
+  },
+  {
+   "id": 21,
+   "type": "CLIPLoader",
+   "pos": [
+    40,
+    300
+   ],
+   "size": [
+    300,
+    106
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "clip_name",
+     "name": "clip_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "clip_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "type",
+     "name": "type",
+     "type": "COMBO",
+     "widget": {
+      "name": "type"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "device",
+     "name": "device",
+     "type": "COMBO",
+     "widget": {
+      "name": "device"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "CLIP",
+     "name": "CLIP",
+     "type": "CLIP",
+     "links": [
+      24,
+      25
+     ]
+    }
+   ],
+   "title": "Load Qwen3 0.6B text encoder",
+   "properties": {
+    "Node name for S&R": "CLIPLoader"
+   },
+   "widgets_values": [
+    "qwen_3_06b_base.safetensors",
+    "stable_diffusion",
+    "default"
+   ]
+  },
+  {
+   "id": 22,
+   "type": "VAELoader",
+   "pos": [
+    40,
+    460
+   ],
+   "size": [
+    300,
+    58
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "vae_name",
+     "name": "vae_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "vae_name"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "VAE",
+     "name": "VAE",
+     "type": "VAE",
+     "links": [
+      42,
+      45
+     ]
+    }
+   ],
+   "title": "Load Qwen-Image VAE",
+   "properties": {
+    "Node name for S&R": "VAELoader"
+   },
+   "widgets_values": [
+    "qwen_image_vae.safetensors"
+   ]
+  }
+ ],
+ "links": [
+  [
+   24,
+   21,
+   0,
+   2,
+   0,
+   "CLIP"
+  ],
+  [
+   25,
+   21,
+   0,
+   3,
+   0,
+   "CLIP"
+  ],
+  [
+   26,
+   20,
+   0,
+   5,
+   0,
+   "MODEL"
+  ],
+  [
+   27,
+   5,
+   0,
+   6,
+   0,
+   "MODEL"
+  ],
+  [
+   28,
+   6,
+   0,
+   7,
+   0,
+   "MODEL"
+  ],
+  [
+   29,
+   7,
+   0,
+   8,
+   0,
+   "MODEL"
+  ],
+  [
+   30,
+   8,
+   0,
+   9,
+   0,
+   "MODEL"
+  ],
+  [
+   31,
+   9,
+   0,
+   18,
+   0,
+   "MODEL"
+  ],
+  [
+   32,
+   10,
+   0,
+   11,
+   0,
+   "MODEL"
+  ],
+  [
+   33,
+   20,
+   0,
+   12,
+   0,
+   "MODEL"
+  ],
+  [
+   34,
+   2,
+   0,
+   12,
+   1,
+   "CONDITIONING"
+  ],
+  [
+   35,
+   3,
+   0,
+   12,
+   2,
+   "CONDITIONING"
+  ],
+  [
+   36,
+   4,
+   0,
+   12,
+   3,
+   "LATENT"
+  ],
+  [
+   37,
+   10,
+   0,
+   13,
+   0,
+   "MODEL"
+  ],
+  [
+   38,
+   2,
+   0,
+   13,
+   1,
+   "CONDITIONING"
+  ],
+  [
+   39,
+   3,
+   0,
+   13,
+   2,
+   "CONDITIONING"
+  ],
+  [
+   40,
+   4,
+   0,
+   13,
+   3,
+   "LATENT"
+  ],
+  [
+   41,
+   12,
+   0,
+   14,
+   0,
+   "LATENT"
+  ],
+  [
+   42,
+   22,
+   0,
+   14,
+   1,
+   "VAE"
+  ],
+  [
+   43,
+   14,
+   0,
+   15,
+   0,
+   "IMAGE"
+  ],
+  [
+   44,
+   13,
+   0,
+   16,
+   0,
+   "LATENT"
+  ],
+  [
+   45,
+   22,
+   0,
+   16,
+   1,
+   "VAE"
+  ],
+  [
+   46,
+   16,
+   0,
+   17,
+   0,
+   "IMAGE"
+  ],
+  [
+   47,
+   18,
+   0,
+   10,
+   0,
+   "MODEL"
+  ],
+  [
+   48,
+   19,
+   0,
+   12,
+   4,
+   "INT"
+  ],
+  [
+   49,
+   19,
+   0,
+   13,
+   4,
+   "INT"
+  ],
+  [
+   50,
+   1,
+   0,
+   20,
+   0,
+   "MODEL"
+  ]
+ ],
+ "groups": [],
+ "config": {},
+ "extra": {
+  "ds": {
+   "scale": 1,
+   "offset": [
+    0,
+    0
+   ]
+  }
+ },
+ "version": 0.4
+}

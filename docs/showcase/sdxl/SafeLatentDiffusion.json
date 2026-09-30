@@ -1,0 +1,142 @@
+{
+ "ckpt": {
+  "class_type": "CheckpointLoaderSimple",
+  "inputs": {
+   "ckpt_name": "sd_xl_base_1.0.safetensors"
+  }
+ },
+ "pos": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "a cozy reading nook by a large window, bookshelves, armchair, afternoon light, photograph",
+   "clip": [
+    "ckpt",
+    1
+   ]
+  }
+ },
+ "neg": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "plants, potted plant, leaves",
+   "clip": [
+    "ckpt",
+    1
+   ]
+  }
+ },
+ "lat": {
+  "class_type": "EmptyLatentImage",
+  "inputs": {
+   "width": 1024,
+   "height": 1024,
+   "batch_size": 1
+  }
+ },
+ "dec": {
+  "class_type": "VAEDecode",
+  "inputs": {
+   "samples": [
+    "ks",
+    0
+   ],
+   "vae": [
+    "ckpt",
+    2
+   ]
+  }
+ },
+ "save": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "dec",
+    0
+   ],
+   "filename_prefix": "cfg_showcase/sdxl/SafeLatentDiffusion"
+  }
+ },
+ "null": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "",
+   "clip": [
+    "ckpt",
+    1
+   ]
+  }
+ },
+ "guider": {
+  "class_type": "CFGP_SafeLatentDiffusion",
+  "inputs": {
+   "preset": "medium",
+   "model": [
+    "ckpt",
+    0
+   ],
+   "positive": [
+    "pos",
+    0
+   ],
+   "negative": [
+    "neg",
+    0
+   ],
+   "null": [
+    "null",
+    0
+   ],
+   "cfg": 7.0,
+   "space": "auto (the method's own)"
+  }
+ },
+ "noise": {
+  "class_type": "RandomNoise",
+  "inputs": {
+   "noise_seed": 1234
+  }
+ },
+ "sampler": {
+  "class_type": "KSamplerSelect",
+  "inputs": {
+   "sampler_name": "dpmpp_2m"
+  }
+ },
+ "sigmas": {
+  "class_type": "BasicScheduler",
+  "inputs": {
+   "model": [
+    "ckpt",
+    0
+   ],
+   "scheduler": "karras",
+   "steps": 50,
+   "denoise": 1.0
+  }
+ },
+ "ks": {
+  "class_type": "SamplerCustomAdvanced",
+  "inputs": {
+   "noise": [
+    "noise",
+    0
+   ],
+   "guider": [
+    "guider",
+    0
+   ],
+   "sampler": [
+    "sampler",
+    0
+   ],
+   "sigmas": [
+    "sigmas",
+    0
+   ],
+   "latent_image": [
+    "lat",
+    0
+   ]
+  }
+ }
+}

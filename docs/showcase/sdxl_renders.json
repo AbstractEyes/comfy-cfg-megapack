@@ -1,0 +1,345 @@
+{
+ "model": "sdxl",
+ "size": 1024,
+ "steps": 50,
+ "seed": 1234,
+ "sampler": "dpmpp_2m / karras",
+ "prompt": "photograph of an old fisherman in a yellow raincoat on a harbor at dawn, weathered face, detailed, sharp focus",
+ "negative": "blurry, low quality, watermark, text",
+ "guider_prompt": "a cozy reading nook by a large window, bookshelves, armchair, afternoon light, photograph",
+ "guider_negative": "plants, potted plant, leaves",
+ "renders": {
+  "plain_cfg7": {
+   "seconds": 31.3,
+   "file": "cfg_showcase/sdxl/plain_cfg7_00002_.png"
+  },
+  "plain_cfg14": {
+   "seconds": 10.8,
+   "file": "cfg_showcase/sdxl/plain_cfg14_00001_.png"
+  },
+  "RescaleCFG": {
+   "seconds": 10.7,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/RescaleCFG_00001_.png"
+  },
+  "DynamicThreshold": {
+   "seconds": 10.2,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/DynamicThreshold_00001_.png"
+  },
+  "MimicScale": {
+   "seconds": 10.8,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/MimicScale_00001_.png"
+  },
+  "APG": {
+   "seconds": 10.9,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/APG_00001_.png"
+  },
+  "CFGZeroStar": {
+   "seconds": 10.8,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/CFGZeroStar_00001_.png"
+  },
+  "TCFG": {
+   "seconds": 10.4,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/TCFG_00001_.png"
+  },
+  "BetaCFG": {
+   "seconds": 10.3,
+   "cfg": 7.0,
+   "overrides": {
+    "scale": 19.2
+   },
+   "file": "cfg_showcase/sdxl/BetaCFG_00001_.png"
+  },
+  "ADG": {
+   "seconds": 10.6,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/ADG_00001_.png"
+  },
+  "PowerLawCFG": {
+   "seconds": 11.2,
+   "cfg": 7.0,
+   "overrides": {
+    "omega": 2.42
+   },
+   "file": "cfg_showcase/sdxl/PowerLawCFG_00001_.png"
+  },
+  "EPCFG": {
+   "seconds": 11.1,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/EPCFG_00001_.png"
+  },
+  "CFGRenorm": {
+   "seconds": 10.8,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/CFGRenorm_00001_.png"
+  },
+  "CFGNorm": {
+   "seconds": 10.7,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/CFGNorm_00001_.png"
+  },
+  "MAMBOG": {
+   "seconds": 10.7,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/MAMBOG_00001_.png"
+  },
+  "SkimmedCFG": {
+   "seconds": 11.1,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/SkimmedCFG_00001_.png"
+  },
+  "AutomaticCFG": {
+   "seconds": 10.8,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/AutomaticCFG_00001_.png"
+  },
+  "Mahiro": {
+   "seconds": 10.7,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/Mahiro_00001_.png"
+  },
+  "ReinhardCFG": {
+   "seconds": 10.9,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/ReinhardCFG_00001_.png"
+  },
+  "SMCCFG": {
+   "seconds": 11.2,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/SMCCFG_00002_.png"
+  },
+  "PMCCFG": {
+   "seconds": 10.6,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/PMCCFG_00001_.png"
+  },
+  "AdaMaG": {
+   "seconds": 10.7,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/AdaMaG_00001_.png"
+  },
+  "FBG": {
+   "seconds": 10.7,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/FBG_00002_.png"
+  },
+  "VAGS": {
+   "seconds": 10.7,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/VAGS_00001_.png"
+  },
+  "CFGOEC": {
+   "seconds": 10.2,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/CFGOEC_00001_.png"
+  },
+  "HiGS": {
+   "seconds": 10.6,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/HiGS_00001_.png"
+  },
+  "TSR": {
+   "seconds": 11.1,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/TSR_00001_.png"
+  },
+  "EpsilonScaling": {
+   "seconds": 10.8,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/EpsilonScaling_00001_.png"
+  },
+  "AdaptiveGuidance": {
+   "seconds": 10.6,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/AdaptiveGuidance_00002_.png"
+  },
+  "TransitionPoint": {
+   "seconds": 11.1,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/TransitionPoint_00001_.png"
+  },
+  "GuidanceInterval": {
+   "seconds": 10.7,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/GuidanceInterval_00001_.png"
+  },
+  "WangSchedules": {
+   "seconds": 10.6,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/WangSchedules_00001_.png"
+  },
+  "TVCFG": {
+   "seconds": 10.3,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/TVCFG_00001_.png"
+  },
+  "C2FG": {
+   "seconds": 10.7,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/C2FG_00001_.png"
+  },
+  "EarlyHighLateUncond": {
+   "seconds": 10.6,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/EarlyHighLateUncond_00001_.png"
+  },
+  "CFGTruncation": {
+   "seconds": 11.4,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/CFGTruncation_00001_.png"
+  },
+  "PAG": {
+   "seconds": 19.8,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/PAG_00001_.png"
+  },
+  "SEG": {
+   "seconds": 19.8,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/SEG_00001_.png"
+  },
+  "STG": {
+   "seconds": 19.8,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/STG_00001_.png"
+  },
+  "PerpNeg": {
+   "seconds": 20.9,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/PerpNeg_00002_.png"
+  },
+  "ComposableNOT": {
+   "seconds": 19.3,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/ComposableNOT_00002_.png"
+  },
+  "SignedGuidance": {
+   "seconds": 19.8,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/SignedGuidance_00002_.png"
+  },
+  "ContrastiveCFG": {
+   "seconds": 19.4,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/ContrastiveCFG_00002_.png"
+  },
+  "SafeLatentDiffusion": {
+   "seconds": 19.5,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/SafeLatentDiffusion_00002_.png"
+  },
+  "WindowedNegative": {
+   "seconds": 19.3,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/WindowedNegative_00002_.png"
+  },
+  "SAMG": {
+   "seconds": 12.1,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/SAMG_00001_.png"
+  },
+  "FDG": {
+   "seconds": 11.6,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/FDG_00001_.png"
+  },
+  "FreSca": {
+   "seconds": 11.1,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/FreSca_00001_.png"
+  },
+  "HiWave": {
+   "seconds": 13.9,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/HiWave_00001_.png"
+  },
+  "LFCFG": {
+   "seconds": 19.2,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/LFCFG_00001_.png"
+  },
+  "ZeResFDG": {
+   "seconds": 20.0,
+   "cfg": 7.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/ZeResFDG_00001_.png"
+  },
+  "Govern20": {
+   "seconds": 20.8,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/Govern20_00001_.png"
+  },
+  "Pentachoron": {
+   "seconds": 21.9,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/Pentachoron_00001_.png"
+  },
+  "CorrectRescale": {
+   "seconds": 21.5,
+   "cfg": 14.0,
+   "overrides": {},
+   "file": "cfg_showcase/sdxl/CorrectRescale_00001_.png"
+  },
+  "guider_no_negative": {
+   "seconds": 11.2,
+   "file": "cfg_showcase/sdxl/guider_no_negative_00001_.png"
+  },
+  "guider_negative": {
+   "seconds": 10.9,
+   "file": "cfg_showcase/sdxl/guider_negative_00001_.png"
+  }
+ }
+}

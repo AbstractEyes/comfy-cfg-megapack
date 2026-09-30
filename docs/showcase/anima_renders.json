@@ -1,0 +1,131 @@
+{
+ "model": "anima",
+ "size": 1024,
+ "steps": 50,
+ "seed": 1234,
+ "sampler": "er_sde / simple",
+ "prompt": "masterpiece, best quality, score_7, safe, 1girl, solo, red scarf, winter coat, snow, pine forest, looking at viewer, smile, detailed background, soft light",
+ "negative": "worst quality, low quality, score_1, score_2, score_3, artist name, blurry, jpeg artifacts, chromatic aberration",
+ "guider_prompt": "masterpiece, best quality, score_7, safe, 1girl, solo, reading a book in a cozy library, bookshelves, window, afternoon light",
+ "guider_negative": "plants, potted plant, leaves",
+ "renders": {
+  "plain_cfg4.5": {
+   "seconds": 32.5,
+   "file": "cfg_showcase/anima/plain_cfg4.5_00002_.png"
+  },
+  "plain_cfg9": {
+   "seconds": 18.6,
+   "file": "cfg_showcase/anima/plain_cfg9_00001_.png"
+  },
+  "APG": {
+   "seconds": 18.6,
+   "cfg": 9.0,
+   "overrides": {},
+   "file": "cfg_showcase/anima/APG_00001_.png"
+  },
+  "CFGZeroStar": {
+   "seconds": 18.7,
+   "cfg": 4.5,
+   "overrides": {},
+   "file": "cfg_showcase/anima/CFGZeroStar_00001_.png"
+  },
+  "ADG": {
+   "seconds": 18.8,
+   "cfg": 9.0,
+   "overrides": {},
+   "file": "cfg_showcase/anima/ADG_00001_.png"
+  },
+  "CFGRenorm": {
+   "seconds": 18.6,
+   "cfg": 9.0,
+   "overrides": {},
+   "file": "cfg_showcase/anima/CFGRenorm_00001_.png"
+  },
+  "PMCCFG": {
+   "seconds": 18.6,
+   "cfg": 9.0,
+   "overrides": {},
+   "file": "cfg_showcase/anima/PMCCFG_00001_.png"
+  },
+  "AdaMaG": {
+   "seconds": 18.8,
+   "cfg": 4.5,
+   "overrides": {},
+   "file": "cfg_showcase/anima/AdaMaG_00001_.png"
+  },
+  "FBG": {
+   "seconds": 22.6,
+   "cfg": 4.5,
+   "overrides": {},
+   "file": "cfg_showcase/anima/FBG_00002_.png"
+  },
+  "VAGS": {
+   "seconds": 19.1,
+   "cfg": 4.5,
+   "overrides": {},
+   "file": "cfg_showcase/anima/VAGS_00001_.png"
+  },
+  "GuidanceInterval": {
+   "seconds": 18.7,
+   "cfg": 9.0,
+   "overrides": {},
+   "file": "cfg_showcase/anima/GuidanceInterval_00001_.png"
+  },
+  "TVCFG": {
+   "seconds": 18.7,
+   "cfg": 4.5,
+   "overrides": {},
+   "file": "cfg_showcase/anima/TVCFG_00001_.png"
+  },
+  "C2FG": {
+   "seconds": 18.7,
+   "cfg": 4.5,
+   "overrides": {
+    "rate": 0.2
+   },
+   "file": "cfg_showcase/anima/C2FG_00001_.png"
+  },
+  "CFGTruncation": {
+   "seconds": 13.1,
+   "cfg": 4.5,
+   "overrides": {},
+   "file": "cfg_showcase/anima/CFGTruncation_00001_.png"
+  },
+  "SEG": {
+   "seconds": 27.2,
+   "cfg": 4.5,
+   "overrides": {},
+   "file": "cfg_showcase/anima/SEG_00001_.png"
+  },
+  "STG": {
+   "seconds": 27.2,
+   "cfg": 4.5,
+   "overrides": {},
+   "file": "cfg_showcase/anima/STG_00001_.png"
+  },
+  "Govern20": {
+   "seconds": 19.1,
+   "cfg": 9.0,
+   "overrides": {},
+   "file": "cfg_showcase/anima/Govern20_00001_.png"
+  },
+  "Pentachoron": {
+   "seconds": 18.6,
+   "cfg": 9.0,
+   "overrides": {},
+   "file": "cfg_showcase/anima/Pentachoron_00001_.png"
+  },
+  "SMCCFG": {
+   "seconds": 19.1,
+   "cfg": 4.5,
+   "overrides": {},
+   "file": "cfg_showcase/anima/SMCCFG_00001_.png"
+  },
+  "AdaptiveGuidance": {
+   "seconds": 18.6,
+   "cfg": 4.5,
+   "overrides": {},
+   "file": "cfg_showcase/anima/AdaptiveGuidance_00001_.png"
+  }
+ }
+}

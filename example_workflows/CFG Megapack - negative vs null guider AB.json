@@ -1,0 +1,1186 @@
+{
+ "id": "30916bea-0db2-4522-beb5-b7c31a2c0203",
+ "revision": 0,
+ "last_node_id": 16,
+ "last_link_id": 54,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "CheckpointLoaderSimple",
+   "pos": [
+    40,
+    40
+   ],
+   "size": [
+    270,
+    98
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "ckpt_name",
+     "name": "ckpt_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "ckpt_name"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      31,
+      34,
+      38
+     ]
+    },
+    {
+     "localized_name": "CLIP",
+     "name": "CLIP",
+     "type": "CLIP",
+     "links": [
+      28,
+      29,
+      30
+     ]
+    },
+    {
+     "localized_name": "VAE",
+     "name": "VAE",
+     "type": "VAE",
+     "links": [
+      50,
+      53
+     ]
+    }
+   ],
+   "title": "Load SDXL",
+   "properties": {
+    "Node name for S&R": "CheckpointLoaderSimple"
+   },
+   "widgets_values": [
+    "sd_xl_base_1.0.safetensors"
+   ],
+   "widgets_values_named": {
+    "ckpt_name": "sd_xl_base_1.0.safetensors"
+   }
+  },
+  {
+   "id": 2,
+   "type": "CLIPTextEncode",
+   "pos": [
+    400,
+    40
+   ],
+   "size": [
+    400,
+    200
+   ],
+   "flags": {},
+   "order": 5,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "clip",
+     "name": "clip",
+     "type": "CLIP",
+     "link": 28
+    },
+    {
+     "localized_name": "text",
+     "name": "text",
+     "type": "STRING",
+     "widget": {
+      "name": "text"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "CONDITIONING",
+     "name": "CONDITIONING",
+     "type": "CONDITIONING",
+     "links": [
+      32,
+      35
+     ]
+    }
+   ],
+   "title": "Positive",
+   "properties": {
+    "Node name for S&R": "CLIPTextEncode"
+   },
+   "widgets_values": [
+    "a red fox sitting in fresh snow at dawn, detailed wildlife photo"
+   ],
+   "widgets_values_named": {
+    "text": "a red fox sitting in fresh snow at dawn, detailed wildlife photo"
+   }
+  },
+  {
+   "id": 3,
+   "type": "CLIPTextEncode",
+   "pos": [
+    400,
+    310
+   ],
+   "size": [
+    400,
+    200
+   ],
+   "flags": {},
+   "order": 6,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "clip",
+     "name": "clip",
+     "type": "CLIP",
+     "link": 29
+    },
+    {
+     "localized_name": "text",
+     "name": "text",
+     "type": "STRING",
+     "widget": {
+      "name": "text"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "CONDITIONING",
+     "name": "CONDITIONING",
+     "type": "CONDITIONING",
+     "links": [
+      33,
+      36
+     ]
+    }
+   ],
+   "title": "Negative",
+   "properties": {
+    "Node name for S&R": "CLIPTextEncode"
+   },
+   "widgets_values": [
+    "blurry, low quality, watermark, text"
+   ],
+   "widgets_values_named": {
+    "text": "blurry, low quality, watermark, text"
+   }
+  },
+  {
+   "id": 4,
+   "type": "EmptyLatentImage",
+   "pos": [
+    400,
+    850
+   ],
+   "size": [
+    270,
+    106
+   ],
+   "flags": {},
+   "order": 1,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "width",
+     "name": "width",
+     "type": "INT",
+     "widget": {
+      "name": "width"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "height",
+     "name": "height",
+     "type": "INT",
+     "widget": {
+      "name": "height"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "batch_size",
+     "name": "batch_size",
+     "type": "INT",
+     "widget": {
+      "name": "batch_size"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "LATENT",
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [
+      43,
+      48
+     ]
+    }
+   ],
+   "title": "Latent",
+   "properties": {
+    "Node name for S&R": "EmptyLatentImage"
+   },
+   "widgets_values": [
+    1024,
+    1024,
+    1
+   ],
+   "widgets_values_named": {
+    "width": 1024,
+    "height": 1024,
+    "batch_size": 1
+   }
+  },
+  {
+   "id": 5,
+   "type": "CLIPTextEncode",
+   "pos": [
+    400,
+    580
+   ],
+   "size": [
+    400,
+    200
+   ],
+   "flags": {},
+   "order": 7,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "clip",
+     "name": "clip",
+     "type": "CLIP",
+     "link": 30
+    },
+    {
+     "localized_name": "text",
+     "name": "text",
+     "type": "STRING",
+     "widget": {
+      "name": "text"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "CONDITIONING",
+     "name": "CONDITIONING",
+     "type": "CONDITIONING",
+     "links": [
+      37
+     ]
+    }
+   ],
+   "title": "Null (empty prompt)",
+   "properties": {
+    "Node name for S&R": "CLIPTextEncode"
+   },
+   "widgets_values": [
+    ""
+   ],
+   "widgets_values_named": {
+    "text": ""
+   }
+  },
+  {
+   "id": 6,
+   "type": "CFGGuider",
+   "pos": [
+    890,
+    40
+   ],
+   "size": [
+    270,
+    98
+   ],
+   "flags": {},
+   "order": 8,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 31
+    },
+    {
+     "localized_name": "positive",
+     "name": "positive",
+     "type": "CONDITIONING",
+     "link": 32
+    },
+    {
+     "localized_name": "negative",
+     "name": "negative",
+     "type": "CONDITIONING",
+     "link": 33
+    },
+    {
+     "localized_name": "cfg",
+     "name": "cfg",
+     "type": "FLOAT",
+     "widget": {
+      "name": "cfg"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "GUIDER",
+     "name": "GUIDER",
+     "type": "GUIDER",
+     "links": [
+      40
+     ]
+    }
+   ],
+   "title": "Guider: plain CFG",
+   "properties": {
+    "Node name for S&R": "CFGGuider"
+   },
+   "widgets_values": [
+    7
+   ],
+   "widgets_values_named": {
+    "cfg": 7
+   }
+  },
+  {
+   "id": 7,
+   "type": "CFGP_ThreeWayGuider",
+   "pos": [
+    890,
+    208
+   ],
+   "size": [
+    361.675390625,
+    190
+   ],
+   "flags": {},
+   "order": 9,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 34
+    },
+    {
+     "localized_name": "positive",
+     "name": "positive",
+     "type": "CONDITIONING",
+     "link": 35
+    },
+    {
+     "localized_name": "negative",
+     "name": "negative",
+     "type": "CONDITIONING",
+     "link": 36
+    },
+    {
+     "localized_name": "null",
+     "name": "null",
+     "type": "CONDITIONING",
+     "link": 37
+    },
+    {
+     "localized_name": "cfg",
+     "name": "cfg",
+     "type": "FLOAT",
+     "widget": {
+      "name": "cfg"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "rule",
+     "name": "rule",
+     "type": "COMBO",
+     "widget": {
+      "name": "rule"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "negative_scale",
+     "name": "negative_scale",
+     "type": "FLOAT",
+     "widget": {
+      "name": "negative_scale"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "space",
+     "name": "space",
+     "type": "COMBO",
+     "widget": {
+      "name": "space"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "GUIDER",
+     "name": "GUIDER",
+     "type": "GUIDER",
+     "links": [
+      45
+     ]
+    }
+   ],
+   "title": "Guider: positive, negative, null",
+   "properties": {
+    "Node name for S&R": "CFGP_ThreeWayGuider"
+   },
+   "widgets_values": [
+    7,
+    "perp_neg",
+    1,
+    "denoised (x0)"
+   ],
+   "widgets_values_named": {
+    "cfg": 7,
+    "rule": "perp_neg",
+    "negative_scale": 1,
+    "space": "denoised (x0)"
+   }
+  },
+  {
+   "id": 8,
+   "type": "RandomNoise",
+   "pos": [
+    890,
+    468
+   ],
+   "size": [
+    270,
+    82
+   ],
+   "flags": {},
+   "order": 2,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "noise_seed",
+     "name": "noise_seed",
+     "type": "INT",
+     "widget": {
+      "name": "noise_seed"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "NOISE",
+     "name": "NOISE",
+     "type": "NOISE",
+     "links": [
+      39,
+      44
+     ]
+    }
+   ],
+   "title": "Noise",
+   "properties": {
+    "Node name for S&R": "RandomNoise"
+   },
+   "widgets_values": [
+    1234,
+    "randomize"
+   ],
+   "widgets_values_named": {
+    "noise_seed": 1234,
+    "control_after_generate": "randomize"
+   }
+  },
+  {
+   "id": 9,
+   "type": "KSamplerSelect",
+   "pos": [
+    890,
+    620
+   ],
+   "size": [
+    270,
+    58
+   ],
+   "flags": {},
+   "order": 3,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "sampler_name",
+     "name": "sampler_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "sampler_name"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "SAMPLER",
+     "name": "SAMPLER",
+     "type": "SAMPLER",
+     "links": [
+      41,
+      46
+     ]
+    }
+   ],
+   "title": "Sampler",
+   "properties": {
+    "Node name for S&R": "KSamplerSelect"
+   },
+   "widgets_values": [
+    "dpmpp_2m"
+   ],
+   "widgets_values_named": {
+    "sampler_name": "dpmpp_2m"
+   }
+  },
+  {
+   "id": 10,
+   "type": "BasicScheduler",
+   "pos": [
+    890,
+    748
+   ],
+   "size": [
+    270,
+    106
+   ],
+   "flags": {},
+   "order": 4,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 38
+    },
+    {
+     "localized_name": "scheduler",
+     "name": "scheduler",
+     "type": "COMBO",
+     "widget": {
+      "name": "scheduler"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "steps",
+     "name": "steps",
+     "type": "INT",
+     "widget": {
+      "name": "steps"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "denoise",
+     "name": "denoise",
+     "type": "FLOAT",
+     "widget": {
+      "name": "denoise"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "SIGMAS",
+     "name": "SIGMAS",
+     "type": "SIGMAS",
+     "links": [
+      42,
+      47
+     ]
+    }
+   ],
+   "title": "Scheduler",
+   "properties": {
+    "Node name for S&R": "BasicScheduler"
+   },
+   "widgets_values": [
+    "karras",
+    30,
+    1
+   ],
+   "widgets_values_named": {
+    "scheduler": "karras",
+    "steps": 30,
+    "denoise": 1
+   }
+  },
+  {
+   "id": 11,
+   "type": "SamplerCustomAdvanced",
+   "pos": [
+    1341.675390625,
+    40
+   ],
+   "size": [
+    212.3638671875,
+    106
+   ],
+   "flags": {},
+   "order": 10,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "noise",
+     "name": "noise",
+     "type": "NOISE",
+     "link": 39
+    },
+    {
+     "localized_name": "guider",
+     "name": "guider",
+     "type": "GUIDER",
+     "link": 40
+    },
+    {
+     "localized_name": "sampler",
+     "name": "sampler",
+     "type": "SAMPLER",
+     "link": 41
+    },
+    {
+     "localized_name": "sigmas",
+     "name": "sigmas",
+     "type": "SIGMAS",
+     "link": 42
+    },
+    {
+     "localized_name": "latent_image",
+     "name": "latent_image",
+     "type": "LATENT",
+     "link": 43
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "output",
+     "name": "output",
+     "type": "LATENT",
+     "links": [
+      49
+     ]
+    },
+    {
+     "localized_name": "denoised_output",
+     "name": "denoised_output",
+     "type": "LATENT",
+     "links": null
+    }
+   ],
+   "title": "Sample: plain CFG",
+   "properties": {
+    "Node name for S&R": "SamplerCustomAdvanced"
+   }
+  },
+  {
+   "id": 12,
+   "type": "SamplerCustomAdvanced",
+   "pos": [
+    1341.675390625,
+    216
+   ],
+   "size": [
+    212.3638671875,
+    106
+   ],
+   "flags": {},
+   "order": 11,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "noise",
+     "name": "noise",
+     "type": "NOISE",
+     "link": 44
+    },
+    {
+     "localized_name": "guider",
+     "name": "guider",
+     "type": "GUIDER",
+     "link": 45
+    },
+    {
+     "localized_name": "sampler",
+     "name": "sampler",
+     "type": "SAMPLER",
+     "link": 46
+    },
+    {
+     "localized_name": "sigmas",
+     "name": "sigmas",
+     "type": "SIGMAS",
+     "link": 47
+    },
+    {
+     "localized_name": "latent_image",
+     "name": "latent_image",
+     "type": "LATENT",
+     "link": 48
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "output",
+     "name": "output",
+     "type": "LATENT",
+     "links": [
+      52
+     ]
+    },
+    {
+     "localized_name": "denoised_output",
+     "name": "denoised_output",
+     "type": "LATENT",
+     "links": null
+    }
+   ],
+   "title": "Sample: three-way",
+   "properties": {
+    "Node name for S&R": "SamplerCustomAdvanced"
+   }
+  },
+  {
+   "id": 13,
+   "type": "VAEDecode",
+   "pos": [
+    1644.0392578125002,
+    40
+   ],
+   "size": [
+    140,
+    46
+   ],
+   "flags": {},
+   "order": 12,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "samples",
+     "name": "samples",
+     "type": "LATENT",
+     "link": 49
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "type": "VAE",
+     "link": 50
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "IMAGE",
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      51
+     ]
+    }
+   ],
+   "title": "Decode: plain",
+   "properties": {
+    "Node name for S&R": "VAEDecode"
+   }
+  },
+  {
+   "id": 14,
+   "type": "SaveImage",
+   "pos": [
+    1900.9441406250003,
+    40
+   ],
+   "size": [
+    420,
+    470
+   ],
+   "flags": {},
+   "order": 14,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "link": 51
+    },
+    {
+     "localized_name": "filename_prefix",
+     "name": "filename_prefix",
+     "type": "STRING",
+     "widget": {
+      "name": "filename_prefix"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "links": null
+    }
+   ],
+   "title": "Save: plain",
+   "properties": {},
+   "widgets_values": [
+    "cfg_guider/plain"
+   ],
+   "widgets_values_named": {
+    "filename_prefix": "cfg_guider/plain"
+   }
+  },
+  {
+   "id": 15,
+   "type": "VAEDecode",
+   "pos": [
+    1644.0392578125002,
+    156
+   ],
+   "size": [
+    166.9048828125,
+    46
+   ],
+   "flags": {},
+   "order": 13,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "samples",
+     "name": "samples",
+     "type": "LATENT",
+     "link": 52
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "type": "VAE",
+     "link": 53
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "IMAGE",
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      54
+     ]
+    }
+   ],
+   "title": "Decode: three-way",
+   "properties": {
+    "Node name for S&R": "VAEDecode"
+   }
+  },
+  {
+   "id": 16,
+   "type": "SaveImage",
+   "pos": [
+    1900.9441406250003,
+    560
+   ],
+   "size": [
+    420,
+    470
+   ],
+   "flags": {},
+   "order": 15,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "link": 54
+    },
+    {
+     "localized_name": "filename_prefix",
+     "name": "filename_prefix",
+     "type": "STRING",
+     "widget": {
+      "name": "filename_prefix"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "links": null
+    }
+   ],
+   "title": "Save: three-way",
+   "properties": {},
+   "widgets_values": [
+    "cfg_guider/three_way"
+   ],
+   "widgets_values_named": {
+    "filename_prefix": "cfg_guider/three_way"
+   }
+  }
+ ],
+ "links": [
+  [
+   28,
+   1,
+   1,
+   2,
+   0,
+   "CLIP"
+  ],
+  [
+   29,
+   1,
+   1,
+   3,
+   0,
+   "CLIP"
+  ],
+  [
+   30,
+   1,
+   1,
+   5,
+   0,
+   "CLIP"
+  ],
+  [
+   31,
+   1,
+   0,
+   6,
+   0,
+   "MODEL"
+  ],
+  [
+   32,
+   2,
+   0,
+   6,
+   1,
+   "CONDITIONING"
+  ],
+  [
+   33,
+   3,
+   0,
+   6,
+   2,
+   "CONDITIONING"
+  ],
+  [
+   34,
+   1,
+   0,
+   7,
+   0,
+   "MODEL"
+  ],
+  [
+   35,
+   2,
+   0,
+   7,
+   1,
+   "CONDITIONING"
+  ],
+  [
+   36,
+   3,
+   0,
+   7,
+   2,
+   "CONDITIONING"
+  ],
+  [
+   37,
+   5,
+   0,
+   7,
+   3,
+   "CONDITIONING"
+  ],
+  [
+   38,
+   1,
+   0,
+   10,
+   0,
+   "MODEL"
+  ],
+  [
+   39,
+   8,
+   0,
+   11,
+   0,
+   "NOISE"
+  ],
+  [
+   40,
+   6,
+   0,
+   11,
+   1,
+   "GUIDER"
+  ],
+  [
+   41,
+   9,
+   0,
+   11,
+   2,
+   "SAMPLER"
+  ],
+  [
+   42,
+   10,
+   0,
+   11,
+   3,
+   "SIGMAS"
+  ],
+  [
+   43,
+   4,
+   0,
+   11,
+   4,
+   "LATENT"
+  ],
+  [
+   44,
+   8,
+   0,
+   12,
+   0,
+   "NOISE"
+  ],
+  [
+   45,
+   7,
+   0,
+   12,
+   1,
+   "GUIDER"
+  ],
+  [
+   46,
+   9,
+   0,
+   12,
+   2,
+   "SAMPLER"
+  ],
+  [
+   47,
+   10,
+   0,
+   12,
+   3,
+   "SIGMAS"
+  ],
+  [
+   48,
+   4,
+   0,
+   12,
+   4,
+   "LATENT"
+  ],
+  [
+   49,
+   11,
+   0,
+   13,
+   0,
+   "LATENT"
+  ],
+  [
+   50,
+   1,
+   2,
+   13,
+   1,
+   "VAE"
+  ],
+  [
+   51,
+   13,
+   0,
+   14,
+   0,
+   "IMAGE"
+  ],
+  [
+   52,
+   12,
+   0,
+   15,
+   0,
+   "LATENT"
+  ],
+  [
+   53,
+   1,
+   2,
+   15,
+   1,
+   "VAE"
+  ],
+  [
+   54,
+   15,
+   0,
+   16,
+   0,
+   "IMAGE"
+  ]
+ ],
+ "groups": [],
+ "config": {},
+ "extra": {
+  "ds": {
+   "scale": 1,
+   "offset": [
+    0,
+    0
+   ]
+  }
+ },
+ "version": 0.4
+}

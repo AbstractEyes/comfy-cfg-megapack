@@ -1,0 +1,122 @@
+{
+ "unet": {
+  "class_type": "UNETLoader",
+  "inputs": {
+   "unet_name": "anima-base-v1.0.safetensors",
+   "weight_dtype": "default"
+  }
+ },
+ "msf": {
+  "class_type": "ModelSamplingAuraFlow",
+  "inputs": {
+   "model": [
+    "unet",
+    0
+   ],
+   "shift": 3.0
+  }
+ },
+ "clipl": {
+  "class_type": "CLIPLoader",
+  "inputs": {
+   "clip_name": "qwen_3_06b_base.safetensors",
+   "type": "stable_diffusion"
+  }
+ },
+ "vael": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "qwen_image_vae.safetensors"
+  }
+ },
+ "pos": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "masterpiece, best quality, score_7, safe, 1girl, solo, red scarf, winter coat, snow, pine forest, looking at viewer, smile, detailed background, soft light",
+   "clip": [
+    "clipl",
+    0
+   ]
+  }
+ },
+ "neg": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "worst quality, low quality, score_1, score_2, score_3, artist name, blurry, jpeg artifacts, chromatic aberration",
+   "clip": [
+    "clipl",
+    0
+   ]
+  }
+ },
+ "lat": {
+  "class_type": "EmptyLatentImage",
+  "inputs": {
+   "width": 1024,
+   "height": 1024,
+   "batch_size": 1
+  }
+ },
+ "p0": {
+  "class_type": "CFGP_CFGZeroStar",
+  "inputs": {
+   "zero_init_steps": 1,
+   "scale": -1.0,
+   "space": "auto (the method's own)",
+   "model": [
+    "msf",
+    0
+   ]
+  }
+ },
+ "ks": {
+  "class_type": "KSampler",
+  "inputs": {
+   "model": [
+    "p0",
+    0
+   ],
+   "seed": 1234,
+   "steps": 50,
+   "cfg": 4.5,
+   "sampler_name": "er_sde",
+   "scheduler": "simple",
+   "positive": [
+    "pos",
+    0
+   ],
+   "negative": [
+    "neg",
+    0
+   ],
+   "latent_image": [
+    "lat",
+    0
+   ],
+   "denoise": 1.0
+  }
+ },
+ "dec": {
+  "class_type": "VAEDecode",
+  "inputs": {
+   "samples": [
+    "ks",
+    0
+   ],
+   "vae": [
+    "vael",
+    0
+   ]
+  }
+ },
+ "save": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "dec",
+    0
+   ],
+   "filename_prefix": "cfg_showcase/anima/CFGZeroStar"
+  }
+ }
+}
