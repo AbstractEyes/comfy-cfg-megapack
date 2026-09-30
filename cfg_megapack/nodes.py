@@ -271,6 +271,51 @@ class CFGMixPentachoron(io.ComfyNode):
         return io.NodeOutput(_patched(model, lambda p: p.__setitem__("mix", spec)))
 
 
+FORMULA_HELP = (
+    "Write the guided prediction as a Python expression (or several lines that assign `result`). "
+    "Variables: c and u (conditional and unconditional predictions in the chosen space), w (the scheduled scale), "
+    "x (the latent), sigma, t (noise level, 1 = noise), p (progress, 0 = first step), step, steps, weak (the "
+    "perturbed prediction when a weak-branch node is chained, else None). Flow matching (Anima, SD3, Flux type): "
+    "flow (True there), shift (the model's timestep shift, sigma = shift t / (1 + (shift - 1) t); exp(mu) on "
+    "Flux-type sampling; 1 on eps models), t_raw (the unshifted time t), a_t and s_t (x = a_t x0 + s_t noise), "
+    "space, to_x0(a) / to_eps(a) / to_v(a) to convert a prediction from the formula's space and from_x0(a) / "
+    "from_eps(a) / from_v(a) to bring one back (on flow models eps is the noise and v the velocity noise - x0; "
+    "plain CFG on the denoised image from any space: from_x0(to_x0(u) + w * (to_x0(c) - to_x0(u)))). Anima's "
+    "latents arrive as (batch, 16, height, width): the single-frame "
+    "axis is taken off and put back. Helpers (per sample): dot, norm, cos, proj(a, onto), orth(a, onto), std, mean, "
+    "lowpass(a, sigma), highpass(a, sigma), lerp, clamp, where, sqrt, exp, tanh, sign, and torch, F "
+    "(torch.nn.functional), torch.fft, torch.linalg and math with their maths functions. Formulas travel inside "
+    "workflow files, so they run as a checked maths language: arithmetic, assignments, assert, if, the variables and "
+    "helpers above and tensor methods; no imports, no names starting with '_', no file access. Full Python only when "
+    "ComfyUI starts with CFG_MEGAPACK_FORMULA_PYTHON=1 (off by default; only for workflows you trust). "
+    "Example: u + w * orth(c - u, c) + 1.0 * proj(c - u, c)")
+
+
+class CFGMixFormula(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="CFGP_MixFormula",
+            display_name="CFG Mix: Your Own Formula",
+            category=f"{CAT}/3 mix",
+            description=FORMULA_HELP,
+            search_aliases=["custom cfg", "cfg expression", "guidance formula"],
+            inputs=[
+                io.Model.Input("model"),
+                io.String.Input("formula", multiline=True, default="u + w * (c - u)", tooltip=FORMULA_HELP),
+                io.Combo.Input("space", options=SPACE_FIXED, default="noise (eps)", tooltip=SPACE_TIP),
+                io.Float.Input("scale", default=-1.0, min=-1.0, max=100.0, step=0.1, tooltip=SCALE_TIP),
+            ],
+            outputs=[io.Model.Output()],
+        )
+
+    @classmethod
+    def execute(cls, model, formula, space, scale) -> io.NodeOutput:
+        engine.compile_formula(formula)          # syntax errors surface on the node, before sampling
+        spec = {"kind": "formula", "formula": formula, "space": _space(space), "scale": float(scale)}
+        return io.NodeOutput(_patched(model, lambda p: p.__setitem__("mix", spec)))
+
+
 # ---------------------------------------------------------------------------
 # 4 where
 # ---------------------------------------------------------------------------
@@ -658,7 +703,7 @@ def _paper_node(p: papers.Paper) -> type:
 
 PAPER_NODES = [_paper_node(p) for p in papers.PAPERS]
 
-NODES = [CFGWhen, CFGWeakPerturbed, CFGMixScale, CFGMixDirection, CFGMixPentachoron, CFGWhereBands,
+NODES = [CFGWhen, CFGWeakPerturbed, CFGMixScale, CFGMixDirection, CFGMixPentachoron, CFGMixFormula, CFGWhereBands,
          CFGWhereRegion, CFGCorrect, CFGGovernAngle, CFGProbe, CFGReadout, CFGClear, CFGThreeWayGuider] + PAPER_NODES
 
 
