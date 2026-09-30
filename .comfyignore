@@ -1,0 +1,5 @@
+# Left out of the Comfy Registry archive (the repository keeps them): the comparison images and their node graphs,
+# which the README and HOWTO show on GitHub, and the registry icon, which the registry loads by URL.
+docs/images/
+docs/showcase/
+docs/icon.jpg

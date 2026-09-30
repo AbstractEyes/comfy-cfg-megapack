@@ -1,0 +1,31 @@
+# Publishes the version in pyproject.toml to the Comfy Registry (the source ComfyUI-Manager installs from) whenever
+# pyproject.toml changes on main, or by hand from the Actions tab. The workflow is the one the registry documents
+# (Comfy-Org/publish-node-action); it waits, without failing, until the REGISTRY_ACCESS_TOKEN repository secret exists.
+name: Publish to Comfy registry
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "pyproject.toml"
+
+jobs:
+  publish-node:
+    name: Publish Custom Node to registry
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'AbstractEyes' }}
+    env:
+      HAS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN != '' }}
+    steps:
+      - name: No registry token yet
+        if: ${{ env.HAS_TOKEN != 'true' }}
+        run: echo "::notice::REGISTRY_ACCESS_TOKEN is not set; nothing published."
+      - name: Check out code
+        if: ${{ env.HAS_TOKEN == 'true' }}
+        uses: actions/checkout@v4
+      - name: Publish Custom Node
+        if: ${{ env.HAS_TOKEN == 'true' }}
+        uses: Comfy-Org/publish-node-action@main
+        with:
+          personal_access_token: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
