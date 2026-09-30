@@ -14,7 +14,8 @@ jobs:
   publish-node:
     name: Publish Custom Node to registry
     runs-on: ubuntu-latest
-    if: ${{ github.repository_owner == 'AbstractEyes' }}
+    # main only: a manual run from another branch (experimental) must never publish
+    if: ${{ github.repository_owner == 'AbstractEyes' && github.ref == 'refs/heads/main' }}
     env:
       HAS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN != '' }}
     steps:

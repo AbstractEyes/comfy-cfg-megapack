@@ -221,7 +221,8 @@ the model page first) and checks them against the hub's sha256.
 
 ## Tests
 
-Run these with ComfyUI's own Python (the tools also use Pillow and numpy, which ComfyUI installs).
+Run these with ComfyUI's own Python (the tools also use Pillow and numpy, which ComfyUI installs). They live in the
+GitHub repository; the Comfy Registry archive carries the nodes and the example workflows only.
 
 | Command (from this folder) | What it checks | Needs |
 |---|---|---|
@@ -272,7 +273,7 @@ If you use the pack, please cite it, and cite the papers behind the nodes you us
   author  = {{AbstractPhil} and {Claude (Anthropic)}},
   title   = {{CFG Megapack}: classifier-free guidance, taken apart, for {ComfyUI}},
   year    = {2026},
-  version = {0.1.2},
+  version = {0.1.3},
   url     = {https://github.com/AbstractEyes/comfy-cfg-megapack},
   note    = {Comfy Registry: comfy-cfg-megapack. Research records: https://huggingface.co/AbstractPhil}
 }

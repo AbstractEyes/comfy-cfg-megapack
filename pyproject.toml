@@ -1,7 +1,7 @@
 [project]
 name = "comfy-cfg-megapack"
 description = "Classifier-free guidance for ComfyUI, taken apart into seven stages (when, weak branch, combine, where, correct, govern, measure), with 50 nodes named after the published guidance methods they implement, on one engine. SDXL, SD1.5 and flow-matching models (Anima)."
-version = "0.1.2"
+version = "0.1.3"
 license = { file = "LICENSE" }
 authors = [
     { name = "AbstractPhil" },
